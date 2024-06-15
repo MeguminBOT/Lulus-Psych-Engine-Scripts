@@ -1,0 +1,10 @@
+Triggers "Add Camera Zoom" event on every step.
+
+Value 1:
+Parameters: "Stage Zoom, Hud Zoom, Num Steps *Optional*"
+(Example: 0.015, 0.03)
+(Example: 0.015, 0.03, 2)
+
+Value 2:
+Toggle the event. [On/Off]
+(Example: On)
