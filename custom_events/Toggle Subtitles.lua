@@ -1,6 +1,7 @@
 --[[
 
 >>> Simple event to toggle subtitles on and off. // AutisticLulu
+Gonna make it more configurable in the near future, for now it's using the same positions and style as in VS FNaF 3!
 
 (Requires the following code to be inside the lua for your stage or song:
 #------------------------------------------------------------------------#
@@ -13,7 +14,7 @@
 		local subTextWidth = getTextWidth('SubtitleText')
 
 		makeLuaSprite('SubtitleTextBG', nil, 0, 535)
-		makeGraphic(SubtitleTextBG, subTextWidth, 72, '000000')
+		makeGraphic('SubtitleTextBG', subTextWidth, 72, '000000')
 		setObjectCamera('SubtitleTextBG', 'camOther')
 		setProperty('SubtitleTextBG.alpha', 0)
 
