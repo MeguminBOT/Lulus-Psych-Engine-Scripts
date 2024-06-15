@@ -1,0 +1,9 @@
+Value 1: 
+Tween Type, Tag, Object.
+(Example: alpha, byeDad, dad).
+
+All parameters must be set for value1.
+
+Value 2: Value, Duration [Seconds], Ease Type.
+(Example: 0, 4, bounceIn)
+Ease Type can be left blank if desired.

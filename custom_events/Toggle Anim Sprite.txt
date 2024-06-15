@@ -1,0 +1,6 @@
+Toggles visibility of an animated sprite.
+Controls "visible" property.
+Optionally takes an Animation tag to force playAnim.
+
+Value 1: Object tag, Animation tag (Optional)
+Value 2: On/Off

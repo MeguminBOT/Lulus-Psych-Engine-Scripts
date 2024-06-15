@@ -1,0 +1,9 @@
+Shuffle the Window Name.
+
+Value 1:
+Shuffle the Window Name [Letters/Words].
+(Example: Letters)
+
+Value 2:
+Toggle the event. [On/Off]
+(Example: On)

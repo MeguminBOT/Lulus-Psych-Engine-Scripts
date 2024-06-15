@@ -1,0 +1,9 @@
+Sets subtitles. 
+(Requires Lua text objects inside the lua for your stage or song)
+(See the Toggle Subtitles.lua script for instructions)
+
+Value 1 = Text
+Value 2 = Color (Hex Code) *Optional*
+
+Leave value 1 empty to remove subtitles.
+Leaving value 2 empty will set the color to white.
