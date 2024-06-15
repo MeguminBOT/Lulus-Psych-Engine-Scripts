@@ -1,5 +1,5 @@
 Toggles visibility of a sprite.
 Controls "visible" property.
 
-Value 1: Object tag, Animation tag (Optional)
+Value 1: Object tag
 Value 2: On/Off
