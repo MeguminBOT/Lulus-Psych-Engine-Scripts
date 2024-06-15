@@ -5,7 +5,9 @@ My collection of scripts I've written to make modding easier or just for fun.
 * Camera Flash
 * Tween (All in One)
 * Window Name
-* Window Name Shuffle.txt
+* Window Name Shuffle
+* Toggle Zoom on Beat
+* Toggle Zoom on Step
 * Toggle Anim Sprite
 * Toggle Sprite
 * Toggle Subtitles
