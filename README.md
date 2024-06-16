@@ -1,6 +1,8 @@
 # Lulu's Psych Engine Scripts
 My collection of scripts I've written to make modding easier or just for fun.
 
+On all my scripts inside the "scripts/" folder, you'll need to edit a variable ("local scriptEnabled") from false to true on whatever script you want to activate.
+
 ## Custom Events
 * [Camera Flash](custom_events/Camera%20Flash.lua)
 * [Tween (All in One)](custom_events/Tween.lua)
@@ -18,5 +20,5 @@ My collection of scripts I've written to make modding easier or just for fun.
 * [ZOB Zoom Speeds](custom_events/ZOB%20Zoom%20Speeds.txt) (Dependant on ZOB Toggle Zoom on Beat/Step)
 * [ZOB Zoom Easetype](custom_events/ZOB%20Zoom%20Easetype.txt) (Dependant on ZOB Toggle Zoom on Beat/Step)
 
-## Custom Global Scripts etc.
-* None yet
+## Custom Global Scripts or Song Specific scripts etc.
+* [Temporarily Disable Anti-Alias](scripts/Temporarily%20Disable%20Anti-Alias.lua) (Recommended to load inside "data/<YOURSONG>"
