@@ -3,7 +3,7 @@ My collection of scripts I've written to make modding easier or just for fun.
 
 ## Custom Events
 * [Camera Flash](custom_events/Camera%20Flash.lua)
-* [Tween (All in One)](custom_events/Tween%20%28All%20in%20One%29.lua)
+* [Tween (All in One)](custom_events/Tween.lua)
 * [Window Name](custom_events/Window%20Name.lua)
 * [Window Name Shuffle](custom_events/Window%20Name%20Shuffle.txt) (Dependant on Window Name)
 * [Toggle Zoom on Beat](custom_events/Toggle%20Zoom%20on%20Beat.lua)
