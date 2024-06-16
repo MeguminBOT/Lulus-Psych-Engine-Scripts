@@ -24,7 +24,7 @@
         Updates the variable used to go back to normal zoom level.
         No values or parameters are required.
 
-    * ZOB Return to Default
+    * ZOB Revert Zoom
         Completely resets the zoom back to what it was when the song started.
         No values or parameters are required.
 ]]
