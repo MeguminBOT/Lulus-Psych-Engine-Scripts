@@ -2,8 +2,8 @@
 >>> Toggleable Add Camera Zoom Event for Psych Engine. // AutisticLulu
 	Triggers Add Camera Zoom events on every beat or optionally between a set amount of beats.
 	
-	Compatible Psych Engine Versions:
-	0.6.x, 0.7.1, 0.7.2
+	Confirmed compatible Psych Engine Versions:
+	0.6.x, 0.7.X
 
 Value 1:
     Parameters: "Stage Zoom, Hud Zoom, Number of beats *OPTIONAL*"
