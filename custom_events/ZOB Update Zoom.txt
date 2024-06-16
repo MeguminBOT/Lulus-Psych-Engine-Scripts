@@ -1,0 +1,4 @@
+Updates the variable used
+to go back to normal zoom level.
+
+No values or parameters are required.

@@ -1,0 +1,4 @@
+Completely resets the zoom back to 
+what it was when the song started.
+
+No values or parameters are required.
