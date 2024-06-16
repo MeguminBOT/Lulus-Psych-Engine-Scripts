@@ -15,6 +15,8 @@ My collection of scripts I've written to make modding easier or just for fun.
 * [ZOB Toggle Zoom on Step](custom_events/ZOB%20Toggle%20Zoom%20on%20Step.lua)
 * [ZOB Update Zoom](custom_events/ZOB%20Update%20Zoom.txt) (Dependant on ZOB Toggle Zoom on Beat/Step)
 * [ZOB Revert Zoom](custom_events/ZOB%20Revert%20Zoom.txt) (Dependant on ZOB Toggle Zoom on Beat/Step)
+* [ZOB Zoom Speeds](custom_events/ZOB%20Zoom%20Speeds.txt) (Dependant on ZOB Toggle Zoom on Beat/Step)
+* [ZOB Zoom Easetype](custom_events/ZOB%20Zoom%20Easetype.txt) (Dependant on ZOB Toggle Zoom on Beat/Step)
 
 ## Custom Global Scripts etc.
 * None yet
