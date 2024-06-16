@@ -14,7 +14,7 @@
 -- #####################################################################
 
 -- Enables the script
-local scriptEnabled = true
+local scriptEnabled = false
 local debugEnabled = false
 
 -- Variables to save the user's original settings [DO NOT MODIFY THIS]
