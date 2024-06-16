@@ -1,0 +1,10 @@
+Sets the easetype of the zoom in and out. 
+Without requiring modifying the ZOB Toggle Zoom Events
+
+Value 1
+Parameters: "EaseType In"
+(Example: quadIn)
+
+Value 2
+Parameters: "EaseType In"
+(Example: quadOut)

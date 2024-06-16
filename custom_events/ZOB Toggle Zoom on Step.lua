@@ -20,11 +20,30 @@
             Parameters: [On/Off]
             (Example: On)
 
+    * ZOB Zoom Speeds
+        Sets the speed of zoom in and out. Without requiring to modify this script.
+
+        Value 1:
+            Parameters: "Zoom In Speed"
+            (Example: 0.01)
+        Value 2:
+            Parameters: "Zoom Out Speed"
+            (Example: 0.033)
+
+    * ZOB Zoom Easetype
+        Sets the EaseType of the zoom in and out effects. Without requiring to modify this script.
+        Value 1:
+            Parameters: "EaseType In"
+            (Example: quadIn)
+        Value 2:
+            Parameters: "EaseType In"
+            (Example: quadOut)
+    
     * ZOB Update Zoom
         Updates the variable used to go back to normal zoom level.
         No values or parameters are required.
 
-    * ZOB Return to Default
+    * ZOB Revert Zoom
         Completely resets the zoom back to what it was when the song started.
         No values or parameters are required.
 ]]
@@ -98,6 +117,14 @@ function onEvent(name, value1, value2)
 
     elseif (name == 'ZOB Revert Zoom' or name == 'ZOB_Revert_Zoom') then
         revertZoom()
+
+    elseif (name == 'ZOB Zoom Speeds' or name == 'ZOB_Zoom_Speeds') then
+        zoomInSpeed = value1
+        zoomOutSpeed = value2
+
+    elseif (name == 'ZOB Zoom Easetype' or name == 'ZOB_Zoom_Easetype') then
+        zoomInEase = value1
+        zoomOutEase = value2
     end
 end
 

@@ -1,0 +1,10 @@
+Sets the speed of zoom in and out.
+Without requiring modifying the ZOB Toggle Zoom Events
+
+Value 1
+Parameters: "Zoom In Speed"
+(Example: 0.05)
+
+Value 2
+Parameters: "Zoom Out Speed"
+(Example: 0.025)
