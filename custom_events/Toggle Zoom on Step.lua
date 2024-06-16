@@ -3,7 +3,7 @@
 	Triggers Add Camera Zoom events on every step or optionally between a set amount of steps.
 	
 	Confirmed compatible Psych Engine Versions:
-	0.6.x, 0.7.1, 0.7.2
+	0.6.x, 0.7.X
 
 Value 1:
     Parameters: "Stage Zoom, Hud Zoom, Number of steps *OPTIONAL*"
