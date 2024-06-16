@@ -21,4 +21,5 @@ On all my scripts inside the "scripts/" folder, you'll need to edit a variable (
 * [ZOB Zoom Easetype](custom_events/ZOB%20Zoom%20Easetype.txt) (Dependant on ZOB Toggle Zoom on Beat/Step)
 
 ## Custom Global Scripts or Song Specific scripts etc.
-* [Temporarily Disable Anti-Alias](scripts/Temporarily%20Disable%20Anti-Alias.lua) (Recommended to load inside "data/<YOURSONG>"
+* [Temporarily Disable Anti-Alias](scripts/Temporarily%20Disable%20Anti-Alias.lua) (Recommended to load inside "data/YOURSONG")
+* [Half-Life 2 Style UI](scripts/Half-Life%202%20UI.lua) (Dependant on the Fonts folder)
