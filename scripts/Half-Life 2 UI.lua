@@ -1,8 +1,8 @@
 --[[
-	Half Life 2 Style UI in lua.
-	Script by AutisticLulu.
+    Half Life 2 Style UI in lua.
+    Script by AutisticLulu.
 
-	Credit if you take any code from this script.
+    Credit if you take any code from this script.
 ]]
 
 -- #####################################################################
@@ -25,78 +25,78 @@ local textFontHL2 = 'luluScripts/dejavusans.ttf'
 -- #####################################################################
 
 local function hideOriginalUI()
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
-	setProperty('timeBar.visible', false)
-	setProperty('timeBarBG.visible', false)
-	setProperty('timeTxt.visible', false)
-	setProperty('healthBar.visible', false)
-	setProperty('healthBarBG.visible', false)
-	setProperty('iconP1.visible', false)
-	setProperty('iconP2.visible', false)
-	setProperty('scoreTxt.visible', false)
-	setProperty('showCombo', false)
-	setProperty('showComboNum', false)
-	setProperty('showRating', true)
+    setProperty('timeBar.visible', false)
+    setProperty('timeBarBG.visible', false)
+    setProperty('timeTxt.visible', false)
+    setProperty('healthBar.visible', false)
+    setProperty('healthBarBG.visible', false)
+    setProperty('iconP1.visible', false)
+    setProperty('iconP2.visible', false)
+    setProperty('scoreTxt.visible', false)
+    setProperty('showCombo', false)
+    setProperty('showComboNum', false)
+    setProperty('showRating', true)
 end
 
 local function hexToRGB(hex)
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
-	return tonumber("0x" .. hex:sub(1,2)), tonumber("0x" .. hex:sub(3,4)), tonumber("0x" .. hex:sub(5,6))
+    return tonumber("0x" .. hex:sub(1,2)), tonumber("0x" .. hex:sub(3,4)), tonumber("0x" .. hex:sub(5,6))
 end
 
 local function rgbToHex(r, g, b)
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
-	return string.format("%02X%02X%02X", r, g, b)
+    return string.format("%02X%02X%02X", r, g, b)
 end
 
 local function interpolateColor(color1, color2, factor)
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
-	local r1, g1, b1 = hexToRGB(color1)
-	local r2, g2, b2 = hexToRGB(color2)
-	
-	local r = r1 + (r2 - r1) * factor
-	local g = g1 + (g2 - g1) * factor
-	local b = b1 + (b2 - b1) * factor
-	
-	return rgbToHex(math.floor(r), math.floor(g), math.floor(b))
+    local r1, g1, b1 = hexToRGB(color1)
+    local r2, g2, b2 = hexToRGB(color2)
+    
+    local r = r1 + (r2 - r1) * factor
+    local g = g1 + (g2 - g1) * factor
+    local b = b1 + (b2 - b1) * factor
+    
+    return rgbToHex(math.floor(r), math.floor(g), math.floor(b))
 end
 
 local function createTextElement(name, text, size, font, x, y)
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
-	makeLuaText(name, text, 0, x, y)
-	setTextSize(name, size)
-	setTextFont(name, font)
-	setTextColor(name, 'FFDC00')
-	setTextBorder(name, 0, 'FFDC00')
-	setObjectCamera(name, 'camHUD')
-	setProperty(name .. '.antialiasing', true)
-	addLuaText(name)
+    makeLuaText(name, text, 0, x, y)
+    setTextSize(name, size)
+    setTextFont(name, font)
+    setTextColor(name, 'FFDC00')
+    setTextBorder(name, 0, 'FFDC00')
+    setObjectCamera(name, 'camHUD')
+    setProperty(name .. '.antialiasing', true)
+    addLuaText(name)
 end
 
 local function createBackgroundElement(name, x, y, width)
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
-	makeLuaSprite(name, nil, x, y)
-	makeGraphic(name, width, 48, '000000')
-	setObjectCamera(name, 'camHUD')
-	setProperty(name .. '.alpha', 0.2)
-	setProperty(name .. '.antialiasing', true)
-	addLuaSprite(name, false)
+    makeLuaSprite(name, nil, x, y)
+    makeGraphic(name, width, 48, '000000')
+    setObjectCamera(name, 'camHUD')
+    setProperty(name .. '.alpha', 0.2)
+    setProperty(name .. '.antialiasing', true)
+    addLuaSprite(name, false)
 end
 
 local function checkScrollDirection()
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
     scrollOffset = downscroll and 660 or 0
 end
 
 local function makeHalfLifeHUD()
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
     createTextElement('healthHL2', '100', 48, valueFontHL2, 100 + centerOffset, 662 - scrollOffset)
     createTextElement('healthTextHL2', 'HEALTH', 14, textFontHL2, 28 + centerOffset, 694 - scrollOffset)
@@ -123,87 +123,87 @@ local function makeHalfLifeHUD()
 end
 
 local function healthUpdate()
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
-	local curHealth = getHealth()
-	local percentageHealth = math.floor((curHealth / 2) * 100)
-	setTextString('healthHL2', tostring(percentageHealth))
+    local curHealth = getHealth()
+    local percentageHealth = math.floor((curHealth / 2) * 100)
+    setTextString('healthHL2', tostring(percentageHealth))
 
-	local color1 = 'FFDC00'
-	local color2 = 'FF3000'
-	local factor
+    local color1 = 'FFDC00'
+    local color2 = 'FF3000'
+    local factor
 
-	if percentageHealth >= 50 then
-		factor = 0
-	elseif percentageHealth <= 25 then
-		factor = 1
-	else
-		factor = (50 - percentageHealth) / 25
-	end
+    if percentageHealth >= 50 then
+        factor = 0
+    elseif percentageHealth <= 25 then
+        factor = 1
+    else
+        factor = (50 - percentageHealth) / 25
+    end
 
-	local interpolatedColor = interpolateColor(color1, color2, factor)
-	setTextColor('healthHL2', interpolatedColor)
-	setTextBorder('healthHL2', 0, interpolatedColor)
-	setTextColor('healthTextHL2', interpolatedColor)
-	setTextBorder('healthTextHL2', 0, interpolatedColor)
+    local interpolatedColor = interpolateColor(color1, color2, factor)
+    setTextColor('healthHL2', interpolatedColor)
+    setTextBorder('healthHL2', 0, interpolatedColor)
+    setTextColor('healthTextHL2', interpolatedColor)
+    setTextBorder('healthTextHL2', 0, interpolatedColor)
 end
 
 local function accuracyUpdate()
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
-	local curAccuracy = getProperty('ratingPercent')
-	local percentageAccuracy = math.floor(curAccuracy * 100)
-	setTextString('ratingHL2', percentageAccuracy)
+    local curAccuracy = getProperty('ratingPercent')
+    local percentageAccuracy = math.floor(curAccuracy * 100)
+    setTextString('ratingHL2', percentageAccuracy)
 end
 
 local function scoreUpdate()
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
-	local curScore = getScore()
-	setTextString('scoreHL2', tostring(curScore))
+    local curScore = getScore()
+    setTextString('scoreHL2', tostring(curScore))
 end
 
 local function missesUpdate()
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
-	local curMisses = getMisses()
-	setTextString('missesHL2', tostring(curMisses))
+    local curMisses = getMisses()
+    setTextString('missesHL2', tostring(curMisses))
 end
 
 local function comboUpdate()
-	if not scriptEnabled then return end
+    if not scriptEnabled then return end
 
-	local curCombo = getProperty('combo')
-	setTextString('comboHL2', tostring(curCombo))
+    local curCombo = getProperty('combo')
+    setTextString('comboHL2', tostring(curCombo))
 end
 
 -- #####################################################################
 -- [[ Bind our local functions to Psych Engine events ]]
 -- #####################################################################
 function onCreate()
-	checkScrollDirection()
-	makeHalfLifeHUD()
+    checkScrollDirection()
+    makeHalfLifeHUD()
 end
 
 function onCreatePost()
-	hideOriginalUI()
+    hideOriginalUI()
 end
 
 function opponentNoteHit(membersIndex, noteData, noteType, isSustainNote)
-	healthUpdate()
+    healthUpdate()
 end
 
 function goodNoteHit(membersIndex, noteData, noteType, isSustainNote)
-	healthUpdate()
-	accuracyUpdate()
-	scoreUpdate()
-	comboUpdate()
+    healthUpdate()
+    accuracyUpdate()
+    scoreUpdate()
+    comboUpdate()
 end
 
 function onUpdateScore(miss)
-	healthUpdate()
-	accuracyUpdate()
-	scoreUpdate()
-	missesUpdate()
-	comboUpdate()
+    healthUpdate()
+    accuracyUpdate()
+    scoreUpdate()
+    missesUpdate()
+    comboUpdate()
 end
