@@ -23,3 +23,4 @@ On all my scripts inside the "scripts/" folder, you'll need to edit a variable (
 ## Custom Global Scripts or Song Specific scripts etc.
 * [Temporarily Disable Anti-Alias](scripts/Temporarily%20Disable%20Anti-Alias.lua) (Recommended to load inside "data/YOURSONG")
 * [Half-Life 2 Style UI](scripts/Half-Life%202%20UI.lua) (Dependant on the Fonts folder)
+* [Half-Life 2 Style Fake Loading Screen](scripts/Half-Life%202%20Loading%20Screen.lua) (Dependant on the Images folder)
