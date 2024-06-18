@@ -9,6 +9,7 @@
 -- [[ Variables ]]
 -- #####################################################################
 
+-- Enables the script
 local scriptEnabled = false
 
 -- Positions and sizes
