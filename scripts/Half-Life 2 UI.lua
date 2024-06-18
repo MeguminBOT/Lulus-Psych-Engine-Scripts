@@ -1,8 +1,10 @@
 --[[
     Half Life 2 Style UI in lua.
-    Script by AutisticLulu.
+
+    Compatible with Psych Engine 0.6.x and 0.7.x
 
     Credit if you take any code from this script.
+    Script by AutisticLulu.
 ]]
 
 -- #####################################################################
