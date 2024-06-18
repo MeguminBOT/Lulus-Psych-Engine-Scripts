@@ -1,7 +1,7 @@
 --[[
 	Script to temporarily disable anti-aliasing for a specific song.
 	
-	Supports: 
+	Compatible with: 
 		* 0.6.x
 		* 0.7.x
 		* VS FNAF 3's modified 0.6.2 variant.
