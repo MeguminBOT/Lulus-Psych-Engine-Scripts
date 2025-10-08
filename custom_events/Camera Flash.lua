@@ -1,107 +1,140 @@
 --[[
 
->>> Camera Flash Event for Psych Engine with configurable camera and flash properties. // AutisticLulu
-* Supports all parameters for the cameraFlash function.
-* Supports RGB input
-* Only triggers if Flashing Lights are enabled.
+>>> Camera Flash Event for Psych Engine.
+	Flashes the screen with a specified colour and duration on a chosen camera object
 
-Value 1:
-	Camera [camGame/camHUD/camOther], forced? [true/false] 
-	(Example: camGame, true)
-	If no camera value is specified, it defaults to camGame
-	If no bool value is specified, it defaults to false
+	Compatible with Psych Engine 0.5.x, 0.6.x, 0.7.X, 1.0.x
 
-Value 2:
-	Colour [HEX], Duration [Seconds] 
-	(Example: 9DCFED, 4) 
+	* Supports all parameters for the built-in cameraFlash function.
+	* Supports RGB and HEX as colour input or 'random' for random colour.
+	* Only triggers if Flashing Lights are enabled.
+	* Includes basic debugging output.
 
-	Colour [RGB], Duration [Seconds] 
-	(Example: 157, 207, 237, 4)
+	Script by AutisticLulu.
+
+	Usage:
+		Value 1:
+			Camera [camGame/camHUD/camOther], forced? [true/false] 
+			(Example: camHUD, true)
+
+		Value 2:
+			Colour [HEX], Duration [Seconds] 
+			(Example: 9DCFED, 4)
+
+			Colour [RGB], Duration [Seconds] 
+			(Example: 157, 207, 237, 4)
+
+	If no camera is specified, it defaults to "defaultCamera"
+	If no bool is specified, it defaults to "defaultForced"
+	If no colour is specified, it defaults to "defaultColour"
+	If no duration is specified, it defaults to "defaultDuration"
 
 ]]
+-- #####################################################################
+-- [[ Setting Variables ]]
+-- Users can modify these variables freely.
+-- #####################################################################
 
--- Define valid camera options.
+local enableDebug = false
+
 local validCameras = {
 	camGame = true,
 	camHUD = true,
 	camOther = true
 }
 
--- Helper function: Converts RGB color codes to hexadecimal.
+local defaultCamera = "camGame"
+local defaultForced = false
+local defaultColour = "FFFFFF"
+local defaultDuration = 1
+
+
+-- #####################################################################
+-- [[ Custom Functions ]]
+-- #####################################################################
+
+-- Converts each RGB value to hexadecimal
 local function rgbToHex(r, g, b)
-    -- Convert each RGB value to hexadecimal and concatenate them.
-    local hexR = string.format('%02X', r)
-    local hexG = string.format('%02X', g)
-    local hexB = string.format('%02X', b)
-    return hexR .. hexG .. hexB
+	r = math.max(0, math.min(255, r))
+	g = math.max(0, math.min(255, g))
+	b = math.max(0, math.min(255, b))
+
+	local hexR = string.format("%02X", r)
+	local hexG = string.format("%02X", g)
+	local hexB = string.format("%02X", b)
+	return hexR .. hexG .. hexB
 end
 
--- Helper function: Parses the camera and forced value from the input string.
+-- Parses the camera and forced value from the input string.
 local function parseCameraValue(value)
-	-- Extract the camera and forced values from the input string.
-	local camera, isForced = string.match(value:gsub(' ', ''), '(.*),(%a+)')
+	if not value or value == "" then
+		return defaultCamera, defaultForced
+	end
 
-	-- If the camera value is valid, return the camera and forced values.
-	if validCameras[camera] and isForced == 'true' then
+	local camera, isForced = string.match(value:gsub(" ", ""), "(.*),(%a+)")
+
+	if validCameras[camera] and isForced == "true" then
 		return camera, true
-
 	elseif validCameras[camera] then
 		return camera, false
 	end
+
+	return defaultCamera, defaultForced
 end
 
--- Helper function: Parses the colour and duration from the input string.
+-- Parses the colour and duration from the input string.
 local function parseFlashValue(value)
-	-- Extract the colour and duration values from the input string.
-	local colour, duration = string.match(value:gsub(' ', ''), '(.*),(.*)')
+	if not value or value == "" then
+		return defaultColour, defaultDuration
+	end
 
-	-- Check if the input colour is "random".
+	local colour, duration = string.match(value:gsub(" ", ""), "(.*),(.*)")
+
+	if not colour or not duration then
+		return defaultColour, defaultDuration
+	end
+
 	if colour:lower() == "random" then
-		-- Generate random RGB values.
 		local r = math.random(0, 255)
 		local g = math.random(0, 255)
 		local b = math.random(0, 255)
-		-- Convert RGB values to hexadecimal format.
 		colour = rgbToHex(r, g, b)
-		return colour, tonumber(duration)
+		return colour, tonumber(duration) or defaultDuration
 	else
-		local r, g, b = string.match(colour:gsub(' ', ''), '(%d+),(%d+),(%d+)')
-		-- Check if the input colour is in RGB format.
-		if r ~= nil and g ~= nil and b ~= nil then
-			-- Convert RGB values to hexadecimal format.
+		local r, g, b = string.match(colour:gsub(" ", ""), "(%d+),(%d+),(%d+)")
+		if r and g and b then
 			colour = rgbToHex(tonumber(r), tonumber(g), tonumber(b))
-			return colour, tonumber(duration)
+			return colour, tonumber(duration) or defaultDuration
 		else
-			return colour, tonumber(duration)
+			return colour, tonumber(duration) or defaultDuration
 		end
 	end
 end
 
--- This function is called when an event occurs.
+-- #####################################################################
+-- [[ Bind our local functions to Psych Engine events ]]
+-- #####################################################################
+
 function onEvent(name, value1, value2)
-	if name == 'Camera Flash' or name == 'Camera_Flash' and flashingLights then
-		-- Parse the input fields for value1 and value2.
+	if (name == "Camera Flash" or name == "Camera_Flash") and flashingLights then
 		local camera, isForced = parseCameraValue(value1)
 		local colour, duration = parseFlashValue(value2)
 
-		-- Call the cameraFlash function with the parsed values.
-		cameraFlash(camera, colour, duration or 1, isForced)
+		-- Debug output if enabled
+		if enableDebug then
+			debugPrint("Camera Flash Event Triggered:")
+			debugPrint("  Camera: " .. camera .. " | Forced: " .. tostring(isForced))
+			debugPrint("  Colour: " .. colour .. " | Duration: " .. duration)
+
+			-- Validate hex colour format
+			local charIndex = string.find(colour, "[^0-9A-Fa-f]")
+			if colour:len() == 6 and charIndex then
+				debugPrint("  WARNING: Hex colour contains invalid character at index " .. charIndex)
+			elseif colour:len() ~= 6 then
+				debugPrint("  WARNING: Hex colour length is " .. colour:len() .. ", expected 6")
+			end
+		end
+
+		cameraFlash(camera, colour, duration, isForced)
 	end
 end
-
---[[ Debug code for parseFlashValue, copy this into onEvent right above the "cameraFlash" function if you need to debug
-
-	local charIndex = string.find(colour, '[^0-9A-Fa-f]')
-	-- If the colour value contains invalid characters, show a debug message.
-	if colour:len() == 6 and charIndex ~= nil then
-		debugPrint('Hex Colour value contains invalid character(s) at index: ' .. charIndex)
-		debugPrint('Invalid HEX colour: ' .. colour)
-		debugPrint("'Camera Flash' event error")
-
-	-- If the colour value is too short or long, show a debug message.
-	elseif colour:len() < 6 or colour:len() > 6 then
-		debugPrint('Hex Colour value too short or long! Has: ' .. colour:len() .. ' | Want: 6')
-		debugPrint('Invalid HEX colour: ' .. colour)
-		debugPrint("'Camera Flash' event error") 
-	end
-]]

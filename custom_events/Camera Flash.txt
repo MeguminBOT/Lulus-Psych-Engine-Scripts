@@ -1,7 +1,10 @@
 Value 1: 
 Camera, forced? [true/false].
-(Example: camHUD, true).
+(Example: camGame, false).
 
 Value 2: Colour [HEX or RGB], Duration [Seconds].
-(Example: 9DCFED, 4).
-(Example: 157, 207, 237, 4)
+(Example: FFFFFF, 1).
+(Example: 255, 255, 255, 1)
+
+Leave fields blank for default.
+More info in the Lua!
