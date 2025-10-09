@@ -1,8 +1,10 @@
-Loads a video file
+Loads a video file 
 
-Value 1: Video filename (without extension)
+Value 1: Filename [String], Camera [String], layer [Int]
 (Example: cutscene1)
+(Example: cutscene1, camHUD, 0)
 
-Value 2: Skip [true/false], Mid-Song [true/false], Loop [true/false], Play On Load [true/false]
+Value 2: Skip [Bool], Mid-Song [Bool], Loop [Bool], Play On Load [Bool]
 (Example: true, true, false, true)
 
+More info in the Lua script!

@@ -7,6 +7,7 @@
 	Just makes it more accessible for less technical users.
 
 	* Supports all parameters for the built-in startVideo function.
+    * Supports camera and layer settings, allowing video to be played behind the HUD.
 	* Backward compatible.
 	* Includes debugging output to a log file.
 
@@ -20,8 +21,9 @@
 	Usage:
 		>>> Video Player:
 			Value 1:
-				Video filename (without extension)
+				Video filename (without extension), Camera [camGame/camHUD/camOther], Layer [Integer])
 				(Example: cutscene1)
+				(Example: cutscene1, camOther,
 
 			Value 2:
 				Skippable [true/false], Mid-Song [true/false], Loop [true/false], Play On Load [true/false]
@@ -32,18 +34,21 @@
 
 		>>> Video Player Control:
 			Value 1:
-				Action to perform: play, pause, resume
+				Action to perform: play, pause, resume, setCamera, setLayer
 				(Example: play)
 
 			Value 2:
-				Leave blank
+				Additional parameter for setCamera/setLayer commands
+				For setCamera: camera name (camGame, camHUD, camOther)
+				For setLayer: layer number (0 = bottom)
 ]]
+
 -- #####################################################################
 -- [[ Setting Variables ]]
 -- Users can modify these variables freely.
 -- #####################################################################
 
-local enableDebug = true
+local enableDebug = false
 local enableFileLogging = true
 local debugLogBuffer = ""
 local modFolder = nil
@@ -53,7 +58,8 @@ local defaultCanSkip = true
 local defaultForMidSong = true
 local defaultShouldLoop = false
 local defaultPlayOnLoad = true
-
+local defaultCamera = "camOther"
+local defaultLayer = nil
 
 -- #####################################################################
 -- [[ Debug Functions ]]
@@ -133,28 +139,28 @@ end
 -- [[ Event Helper Functions ]]
 -- #####################################################################
 
--- Compares two strings numerically (e.g., "1.0.2" vs "1.0.1").
--- Returns: 1 if v1 > v2, -1 if v1 < v2, 0 if equal.
+-- Compares two version strings numerically (e.g., "1.0.2" vs "1.0.1").
+-- Returns: 1 if curVer > minVer, -1 if curVer < minVer, 0 if equal.
 -- This is to determine which parameters to pass to startVideo based on version.
-local function checkCompatibility(v1, v2)
-    local v1Parts = {}
-    local v2Parts = {}
+local function checkCompatibility(curVer, minVer)
+    local curVerParts = {}
+    local minVerParts = {}
 
-    for num in string.gmatch(v1, "%d+") do
-        table.insert(v1Parts, tonumber(num))
+    for num in string.gmatch(curVer, "%d+") do
+        table.insert(curVerParts, tonumber(num))
     end
 
-    for num in string.gmatch(v2, "%d+") do
-        table.insert(v2Parts, tonumber(num))
+    for num in string.gmatch(minVer, "%d+") do
+        table.insert(minVerParts, tonumber(num))
     end
 
-    for i = 1, math.max(#v1Parts, #v2Parts) do
-        local part1 = v1Parts[i] or 0
-        local part2 = v2Parts[i] or 0
+    for i = 1, math.max(#curVerParts, #minVerParts) do
+        local curPart = curVerParts[i] or 0
+        local minPart = minVerParts[i] or 0
 
-        if part1 > part2 then
+        if curPart > minPart then
             return 1
-        elseif part1 < part2 then
+        elseif curPart < minPart then
             return -1
         end
     end
@@ -214,14 +220,65 @@ local function resumeLoadedVideo()
     end
 end
 
--- Parses the video parameters from the input string.
-local function parseVideoValues(value)
+local function setVideoCamera(camera)
+    if psychVersion("1.0.2") then
+        local video = getProperty("videoCutscene")
+        if video ~= nil then
+            setObjectCamera("videoCutscene", camera)
+            debugLog("Video camera set to: " .. camera)
+            return true
+        else
+            debugLog("No video loaded to set camera!")
+            return false
+        end
+    else
+        debugLog("Set Camera command requires Psych Engine 1.0.2 or higher")
+        return false
+    end
+end
+
+local function setVideoLayer(layer)
+    if psychVersion("1.0.2") then
+        local video = getProperty("videoCutscene")
+        if video ~= nil then
+            setObjectOrder("videoCutscene", layer)
+            debugLog("Video layer set to: " .. layer)
+            return true
+        else
+            debugLog("No video loaded to set layer!")
+            return false
+        end
+    else
+        debugLog("Set Layer command requires Psych Engine 1.0.2 or higher")
+        return false
+    end
+end
+
+-- Parses the video setup from the input string
+local function parseVideoConfig(value)
+    if not value or value == "" then
+        return nil, nil, nil
+    end
+
+    local params = {}
+    for param in string.gmatch(value, "([^,]+)") do
+        table.insert(params, param:match("^%s*(.-)%s*$"))
+    end
+
+    local videoName = params[1]
+    local camera = params[2] or defaultCamera
+    local layer = params[3] and tonumber(params[3]) or defaultLayer
+
+    return videoName, camera, layer
+end
+
+-- Parses the video parameters from the input string
+local function parsePlaybackSettings(value)
     if not value or value == "" then
         return defaultCanSkip, defaultForMidSong, defaultShouldLoop, defaultPlayOnLoad
     end
 
     local normalized = value:gsub(" ", ""):lower()
-
     debugLog('Parsing value2: "' .. value .. '" normalized to: "' .. normalized .. '"')
 
     if normalized == "true" then
@@ -261,7 +318,6 @@ local function parseVideoValues(value)
                     tostring(forMidSong) ..
                         ", shouldLoop=" .. tostring(shouldLoop) .. ", playOnLoad=" .. tostring(playOnLoad)
     )
-
     return canSkip, forMidSong, shouldLoop, playOnLoad
 end
 
@@ -275,20 +331,35 @@ end
 
 function onEvent(name, value1, value2)
     if name == "Video Player" or name == "Video_Player" then
-        local canSkip, forMidSong, shouldLoop, playOnLoad = parseVideoValues(value2)
+        local videoName, camera, layer = parseVideoConfig(value1)
+        local canSkip, forMidSong, shouldLoop, playOnLoad = parsePlaybackSettings(value2)
 
         debugLog("Video Player Event Triggered:")
         debugLog("  Psych Engine Version: " .. version)
-        debugLog("  Video: " .. (value1 or "NONE"))
+        debugLog("  Video: " .. (videoName or "NONE"))
+        if camera then
+            debugLog("  Camera: " .. camera)
+        end
+        if layer then
+            debugLog("  Layer: " .. layer)
+        end
         debugLog("  Can Skip: " .. tostring(canSkip) .. " | Mid-Song: " .. tostring(forMidSong))
         debugLog("  Loop: " .. tostring(shouldLoop) .. " | Play On Load: " .. tostring(playOnLoad))
 
         if psychVersion("1.0.2") then
-            startVideo(value1, canSkip, forMidSong, shouldLoop, playOnLoad)
+            startVideo(videoName, canSkip, forMidSong, shouldLoop, playOnLoad)
         elseif psychVersion("1.0") then
-            startVideo(value1, canSkip)
+            startVideo(videoName, canSkip)
         else
-            startVideo(value1)
+            startVideo(videoName)
+        end
+
+        if camera then
+            setVideoCamera(camera)
+        end
+
+        if layer then
+            setVideoLayer(layer)
         end
 
         saveDebugLog()
@@ -297,7 +368,10 @@ function onEvent(name, value1, value2)
         local command = (value1 or ""):gsub(" ", ""):lower()
 
         debugLog("Video Player Control Event Triggered:")
-        debugLog("  Command: " .. (value1 or "NONE"))
+        debugLog("  Command: " .. command)
+        if value2 and value2 ~= "" then
+            debugLog("  Parameter: " .. value2)
+        end
 
         if command == "play" then
             playLoadedVideo()
@@ -305,8 +379,14 @@ function onEvent(name, value1, value2)
             pauseLoadedVideo()
         elseif command == "resume" then
             resumeLoadedVideo()
+        elseif command == "setcamera" then
+            local camera = value2 and value2:match("^%s*(.-)%s*$") or "camOther"
+            setVideoCamera(camera)
+        elseif command == "setlayer" then
+            local layer = tonumber(value2) or 0
+            setVideoLayer(layer)
         else
-            debugLog("Unknown Video Player Control command: " .. (value1 or "NONE"))
+            debugLog("Unknown Video Player Control command: " .. command)
         end
 
         saveDebugLog()
@@ -323,4 +403,8 @@ function onResume()
     if psychVersion("1.0.2") then
         resumeLoadedVideo()
     end
+end
+
+function onDestroy()
+    saveDebugLog()
 end
