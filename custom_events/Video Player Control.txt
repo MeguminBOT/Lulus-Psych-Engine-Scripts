@@ -1,0 +1,7 @@
+Let's you control video playback
+
+Value 1: Action to perform
+[Play / Stop / Resume]
+
+Value 2:
+Leave blank

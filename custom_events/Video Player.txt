@@ -1,0 +1,8 @@
+Loads a video file
+
+Value 1: Video filename (without extension)
+(Example: cutscene1)
+
+Value 2: Skip [true/false], Mid-Song [true/false], Loop [true/false], Play On Load [true/false]
+(Example: true, true, false, true)
+
