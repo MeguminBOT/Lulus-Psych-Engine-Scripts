@@ -38,17 +38,16 @@
 				(Example: play)
 
 			Value 2:
-				Additional parameter for setCamera/setLayer commands
+				Additional parameter for the various "set" commands.
 				For setCamera: camera name (camGame, camHUD, camOther)
 				For setLayer: layer number (0 = bottom)
 ]]
 
 -- #####################################################################
--- [[ Setting Variables ]]
+-- [[ Script Setting Variables ]]
 -- Users can modify these variables freely.
 -- #####################################################################
 
-local enableDebug = false
 local enableFileLogging = true
 local debugLogBuffer = ""
 local modFolder = nil
@@ -65,35 +64,8 @@ local defaultLayer = nil
 -- [[ Debug Functions ]]
 -- #####################################################################
 
-local function detectModFolder()
-    if modFolder then
-        return modFolder
-    end
-
-    local currentModDirectory = nil
-
-    -- Check Psych Engine version so we can use the correct property.
-    if stringStartsWith(version, "0.6") then
-        currentModDirectory = getPropertyFromClass("Paths", "currentModDirectory")
-    else
-        currentModDirectory = getPropertyFromClass("backend.Mods", "currentModDirectory")
-    end
-
-    if currentModDirectory and currentModDirectory ~= "" then
-        modFolder = currentModDirectory
-        logFilePath = currentModDirectory .. "/data/debug_video_player_event.txt"
-        debugPrint("Auto-detected mod folder: " .. modFolder)
-        return modFolder
-    end
-
-    -- Fallback: save to mods root
-    debugPrint("Could not auto-detect mod folder, using mods root")
-    logFilePath = "debug_video_player_event.txt"
-    return nil
-end
-
 -- Enhanced debug logging function, allows debugging to a file with timestamps.
--- Videos often cover up the built-in debugPrint output.
+-- Videos often cover up the built-in debugLog output.
 -- so this is here to help in cases of weird video behavior.
 local function debugLog(message)
     if enableDebug then
@@ -117,20 +89,47 @@ local function debugLog(message)
     end
 end
 
+local function detectModFolder()
+    if modFolder then
+        return modFolder
+    end
+
+    local currentModDirectory = nil
+
+    -- Check Psych Engine version so we can use the correct property.
+    if stringStartsWith(version, "0.6") then
+        currentModDirectory = getPropertyFromClass("Paths", "currentModDirectory")
+    else
+        currentModDirectory = getPropertyFromClass("backend.Mods", "currentModDirectory")
+    end
+
+    if currentModDirectory and currentModDirectory ~= "" then
+        modFolder = currentModDirectory
+        logFilePath = currentModDirectory .. "/data/debug_video_player_event.txt"
+        debugLog("Auto-detected mod folder: " .. modFolder)
+        return modFolder
+    end
+
+    -- Fallback: save to mods root
+    debugLog("Could not auto-detect mod folder, using mods root")
+    logFilePath = "debug_video_player_event.txt"
+    return nil
+end
+
 local function saveDebugLog()
     if enableDebug and enableFileLogging and debugLogBuffer ~= "" then
         if not logFilePath then
-            debugPrint("ERROR: Could not determine log file path")
+            debugLog("ERROR: Could not determine log file path")
             return
         end
 
         local success = saveFile(logFilePath, debugLogBuffer)
 
         if success then
-            debugPrint("Debug log saved to: mods/" .. logFilePath)
+            debugLog("Debug log saved to: mods/" .. logFilePath)
         else
-            debugPrint("ERROR: Failed to save debug log to: mods/" .. logFilePath)
-            debugPrint("This may be a file permissions issue.")
+            debugLog("ERROR: Failed to save debug log to: mods/" .. logFilePath)
+            debugLog("This may be a file permissions issue.")
         end
     end
 end
@@ -257,20 +256,32 @@ end
 -- Parses the video setup from the input string
 local function parseVideoConfig(value)
     if not value or value == "" then
-        return nil, nil, nil
+        return nil, defaultCamera, defaultLayer
     end
+
+    debugLog('Parsing value1: "' .. value .. '"')
 
     local params = {}
     for param in string.gmatch(value, "([^,]+)") do
-        table.insert(params, param:match("^%s*(.-)%s*$"))
+        local trimmed = param:match("^%s*(.-)%s*$")
+        table.insert(params, trimmed)
+        debugLog('  Found param: "' .. trimmed .. '"')
     end
 
     local videoName = params[1]
-    local camera = params[2] or defaultCamera
-    local layer = params[3] and tonumber(params[3]) or defaultLayer
+    local camera = defaultCamera
+    local layer = defaultLayer
 
+    if params[2] ~= nil and params[2] ~= "" then camera = params[2] end
+    if params[3] ~= nil and params[3] ~= "" then layer = tonumber(params[3]) end
+
+    debugLog(
+        "  Parsed: videoName=" ..
+            tostring(videoName) .. ", camera=" .. tostring(camera) .. ", layer=" .. tostring(layer)
+    )
     return videoName, camera, layer
 end
+
 
 -- Parses the video parameters from the input string
 local function parsePlaybackSettings(value)
@@ -298,18 +309,10 @@ local function parsePlaybackSettings(value)
     local shouldLoop = defaultShouldLoop
     local playOnLoad = defaultPlayOnLoad
 
-    if params[1] ~= nil then
-        canSkip = params[1]
-    end
-    if params[2] ~= nil then
-        forMidSong = params[2]
-    end
-    if params[3] ~= nil then
-        shouldLoop = params[3]
-    end
-    if params[4] ~= nil then
-        playOnLoad = params[4]
-    end
+    if params[1] ~= nil then canSkip = params[1] end
+    if params[2] ~= nil then forMidSong = params[2] end 
+    if params[3] ~= nil then shouldLoop = params[3] end
+    if params[4] ~= nil then playOnLoad = params[4] end
 
     debugLog(
         "  Parsed: canSkip=" ..
@@ -331,20 +334,21 @@ end
 
 function onEvent(name, value1, value2)
     if name == "Video Player" or name == "Video_Player" then
+        debugLog("Video Player Event Triggered:")
+        debugLog("Psych Engine Version: " .. version)
+
         local videoName, camera, layer = parseVideoConfig(value1)
         local canSkip, forMidSong, shouldLoop, playOnLoad = parsePlaybackSettings(value2)
 
-        debugLog("Video Player Event Triggered:")
-        debugLog("  Psych Engine Version: " .. version)
-        debugLog("  Video: " .. (videoName or "NONE"))
-        if camera then
-            debugLog("  Camera: " .. camera)
+        debugLog("Video: " .. (videoName or "NONE"))
+        if camera ~= defaultCamera then
+            debugLog("Camera: " .. camera)
         end
-        if layer then
-            debugLog("  Layer: " .. layer)
+        if layer ~= defaultLayer then
+            debugLog("Layer: " .. tostring(layer))
         end
-        debugLog("  Can Skip: " .. tostring(canSkip) .. " | Mid-Song: " .. tostring(forMidSong))
-        debugLog("  Loop: " .. tostring(shouldLoop) .. " | Play On Load: " .. tostring(playOnLoad))
+        debugLog("Can Skip: " .. tostring(canSkip) .. " | Mid-Song: " .. tostring(forMidSong))
+        debugLog("Loop: " .. tostring(shouldLoop) .. " | Play On Load: " .. tostring(playOnLoad))
 
         if psychVersion("1.0.2") then
             startVideo(videoName, canSkip, forMidSong, shouldLoop, playOnLoad)
@@ -354,11 +358,9 @@ function onEvent(name, value1, value2)
             startVideo(videoName)
         end
 
-        if camera then
-            setVideoCamera(camera)
-        end
+        setVideoCamera(camera)
 
-        if layer then
+        if layer ~= nil then
             setVideoLayer(layer)
         end
 
