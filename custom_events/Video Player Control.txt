@@ -5,3 +5,4 @@ Value 1: Action to perform
 
 Value 2: Only for SetCamera/SetLayer
 (Example SetCamera: camHUD)
+(Example SetLayer: 0)

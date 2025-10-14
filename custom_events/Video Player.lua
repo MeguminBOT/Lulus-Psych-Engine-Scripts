@@ -48,6 +48,7 @@
 -- Users can modify these variables freely.
 -- #####################################################################
 
+local enableDebug = false
 local enableFileLogging = true
 local debugLogBuffer = ""
 local modFolder = nil
