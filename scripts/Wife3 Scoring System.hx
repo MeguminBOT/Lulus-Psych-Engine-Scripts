@@ -1,8 +1,8 @@
 /*
 	>>> Wife3 Scoring Script for Psych Engine
 		HScript-based scoring system that implements Etterna's Wife3 accuracy calculation.
-		This script does NOT include any HUD elements by default - it only provides the scoring backend.
-		You can create your own custom UI using the provided global callbacks, edit an existing one or use the scuffed Wife3 UI.hx script.
+		This by default replaces Psych Engine's default scoring system.
+		Can be used with Custom HUDs in Lua/HScript by using the provided global callbacks. 
 
 		Features:
 			- Full Wife3 port using Etterna source code as reference
@@ -24,13 +24,21 @@
 // --- General Settings ---
 var wife3_enabled = true;
 var wife3_debug = false;
+var wife3_replaceScoreText = true;
+var wife3_showTimingDisplay = true;
+
+// --- Timing Display Variables ---
+var timingText:FlxText = null;
+var timingTween:FlxTween = null;
 
 // --- Algorithm Constants (Do Not Modify) ---
 var wife3_miss_weight = -5.5;
 var wife3_max_points = 2.0;
 var wife3_j_pow = 0.75;
-var wife3_judge_scale = 1; // Baseline judge scale (1.0 = J4)
 var JUDGE_WINDOWS:Array<Float> = [4.0, 3.0, 2.0, 1.0, 0.9, 0.75, 0.6, 0.5, 0.4];
+
+// -- Judge Scale (modifiable, not recommended unless you know what you're doing) --
+var wife3_judge_scale = 1.0; // Baseline judge scale (1.0 = J4)
 
 // --- Accuracy Tracking (Do Not Modify) ---
 var wife3_curAccuracy = 0.0;
@@ -38,7 +46,7 @@ var wife3_maxAccuracy = 0.0;
 var wife3_songScore = 0;
 
 // --- Judgement Tracking (Do Not Modify) ---
-var wife3_marvelousHits = 0; // <= 22ms * judge scale
+var wife3_marvelousHits = 0; // <= 22ms * judge scale)
 var wife3_perfectHits = 0; // <= 45ms * judge scale
 var wife3_greatHits = 0; // <= 90ms * judge scale
 var wife3_goodHits = 0; // <= 135ms * judge scale
@@ -61,6 +69,11 @@ function registerCallbacks() {
 	createGlobalCallback('wife3_setJudgeScale', wife3_setJudgeScale);
 	createGlobalCallback('wife3_setJudgePreset', wife3_setJudgePreset);
 	createGlobalCallback('wife3_resetAccuracy', wife3_resetAccuracy);
+	createGlobalCallback('wife3_setReplaceScoreText', wife3_setReplaceScoreText);
+	createGlobalCallback('wife3_getReplaceScoreText', wife3_getReplaceScoreText);
+	createGlobalCallback('wife3_updateScoreText', wife3_updateScoreText);
+	createGlobalCallback('wife3_setShowTimingDisplay', wife3_setShowTimingDisplay);
+	createGlobalCallback('wife3_getShowTimingDisplay', wife3_getShowTimingDisplay);
 
 	setVar('wife3_getAccuracy', wife3_getAccuracy);
 	setVar('wife3_getScore', wife3_getScore);
@@ -78,6 +91,11 @@ function registerCallbacks() {
 	setVar('wife3_setJudgeScale', wife3_setJudgeScale);
 	setVar('wife3_setJudgePreset', wife3_setJudgePreset);
 	setVar('wife3_resetAccuracy', wife3_resetAccuracy);
+	setVar('wife3_setReplaceScoreText', wife3_setReplaceScoreText);
+	setVar('wife3_getReplaceScoreText', wife3_getReplaceScoreText);
+	setVar('wife3_updateScoreText', wife3_updateScoreText);
+	setVar('wife3_setShowTimingDisplay', wife3_setShowTimingDisplay);
+	setVar('wife3_getShowTimingDisplay', wife3_getShowTimingDisplay);
 }
 
 // ========================================
@@ -215,6 +233,11 @@ function wife3_resetAccuracy() {
 	wife3_goodHits = 0;
 	wife3_badHits = 0;
 	debug('Wife3 accuracy reset');
+	
+	// Update score text only if replacement is enabled
+	if (wife3_replaceScoreText) {
+		wife3_updateScoreText();
+	}
 }
 
 function wife3_getAccuracy():Float {
@@ -344,18 +367,199 @@ function wife3_formatPercent(value:Float):String {
 	return Std.string(Math.floor(value * 100) / 100);
 }
 
+function wife3_setReplaceScoreText(replace:Bool) {
+	wife3_replaceScoreText = replace;
+	setVar('wife3_replaceScoreText', wife3_replaceScoreText);
+	debug('Replace Psych Engine score text: ' + (replace ? 'enabled' : 'disabled'));
+}
+
+function wife3_getReplaceScoreText():Bool {
+	return wife3_replaceScoreText;
+}
+
+function wife3_setShowTimingDisplay(show:Bool) {
+	wife3_showTimingDisplay = show;
+	setVar('wife3_showTimingDisplay', wife3_showTimingDisplay);
+	
+	if (!show && timingText != null) {
+		// Hide timing display if disabled
+		timingText.visible = false;
+		if (timingTween != null) {
+			timingTween.cancel();
+			timingTween = null;
+		}
+	} else if (show && timingText != null) {
+		// Show timing display if enabled
+		timingText.visible = true;
+	}
+	
+	debug('Timing display ' + (show ? 'enabled' : 'disabled'));
+}
+
+function wife3_getShowTimingDisplay():Bool {
+	return wife3_showTimingDisplay;
+}
+
+function createTimingDisplay() {
+	if (timingText != null) return; // Already created
+	
+	// Create timing display text
+	timingText = new FlxText(0, 0, 200, '');
+	timingText.setFormat(Paths.font('vcr.ttf'), 18, FlxColor.WHITE, 'center', 'outline', FlxColor.BLACK);
+	timingText.scrollFactor.set();
+	timingText.borderSize = 1.5;
+	timingText.cameras = [game.camHUD];
+	timingText.alpha = 0;
+	
+	// Position timing display in the middle of the playfield
+	positionTimingDisplay();
+	
+	// Add to scene
+	game.add(timingText);
+	
+	debug('Timing display created');
+}
+
+function positionTimingDisplay() {
+	if (timingText == null) return;
+	
+	// Position timing display in the middle of the playfield
+	if (game.playerStrums != null && game.playerStrums.members.length >= 4) {
+		var firstStrumX = game.playerStrums.members[0].x;
+		var lastStrumX = game.playerStrums.members[3].x;
+		var strumWidth = game.playerStrums.members[0].width;
+		var totalWidth = (lastStrumX + strumWidth) - firstStrumX;
+		
+		// Center the timing text in the middle of the playfield
+		timingText.x = firstStrumX + (totalWidth / 2) - (timingText.width / 2);
+		timingText.y = FlxG.height / 2; // Always use screen center for Y position
+	} else {
+		// Fallback to screen center
+		timingText.x = FlxG.width / 2 - 100;
+		timingText.y = FlxG.height / 2;
+	}
+}
+
+function showTimingFeedback(offset:Float) {
+	// Only show timing feedback if timing display is enabled and text exists
+	if (!wife3_enabled || !wife3_showTimingDisplay || timingText == null)
+		return;
+	
+	var absOffset = Math.abs(offset);
+	var prefix = offset > 0 ? '+' : '';
+	var roundedOffset = Math.round(offset * 100) / 100;
+	var timingStr = prefix + roundedOffset + 'ms';
+	
+	// Determine color based on timing windows
+	var color = FlxColor.WHITE; // Default/Marvelous
+	
+	// Check timing windows using Wife3 system
+	if (absOffset > wife3_getTimingWindow('marvelous'))
+		color = FlxColor.YELLOW; // Perfect
+	if (absOffset > wife3_getTimingWindow('perfect'))
+		color = FlxColor.GREEN; // Great
+	if (absOffset > wife3_getTimingWindow('great'))
+		color = FlxColor.CYAN; // Good
+	if (absOffset > wife3_getTimingWindow('good'))
+		color = FlxColor.MAGENTA; // Bad
+	if (absOffset > wife3_getTimingWindow('bad'))
+		color = FlxColor.RED; // Way off
+	
+	timingText.text = timingStr;
+	timingText.color = color;
+	
+	// Cancel existing tween
+	if (timingTween != null) {
+		timingTween.cancel();
+	}
+	
+	// Animate in
+	timingText.alpha = 0;
+	// Always start from screen center
+	timingText.y = FlxG.height / 2;
+	timingText.scale.set(1.05, 1.05);
+	
+	timingTween = FlxTween.tween(timingText, {
+		alpha: 1,
+		y: (FlxG.height / 2) - 15,
+		'scale.x': 1,
+		'scale.y': 1
+	}, 0.1, {
+		onComplete: function(twn:FlxTween) {
+			// Fade out
+			timingTween = FlxTween.tween(timingText, {
+				alpha: 0,
+				y: (FlxG.height / 2) - 25
+			}, 0.3, {
+				startDelay: 0.3,
+				onComplete: function(twn:FlxTween) {
+					// Reset to screen center when animation completes
+					timingText.y = FlxG.height / 2;
+					timingTween = null;
+				}
+			});
+		}
+	});
+}
+
+/**
+ * Updates the score text with Wife3 information
+ * This function replaces Psych Engine's default score text format
+ */
+function wife3_updateScoreText() {
+	// Only update score text if Wife3 is enabled AND score text replacement is enabled
+	if (!wife3_enabled || !wife3_replaceScoreText) return;
+	
+	var accuracy = wife3_getAccuracy();
+	var grade = wife3_getGrade(accuracy);
+	var score = wife3_getScore();
+	var formattedPercent = wife3_formatPercent(accuracy);
+	
+	// Get current misses from the game
+	var misses = game.songMisses;
+	
+	// Create Wife3 score text format
+	var scoreText = 'Score: ' + score + ' | Misses: ' + misses + ' | Rating: ' + formattedPercent + '% (' + grade + ')';
+	
+	// Update the score text
+	game.scoreTxt.text = scoreText;
+}
+
 // ========================================
 // EVENT HANDLERS
 // ========================================
 
 function onCreate() {
 	registerCallbacks();
-	debug('Wife3 global callbacks registered - accessible from all scripts');
+	debug('Wife3 functions registered - accessible from other scripts');
 	debug('Wife3 Scoring System Initialized');
 }
 
 function onCreatePost() {
 	wife3_resetAccuracy();
+	
+	// Create timing display if enabled
+	if (wife3_showTimingDisplay) {
+		createTimingDisplay();
+	}
+}
+
+function preUpdateScore(miss:Bool) {
+	// Only prevent default score text update if Wife3 score text replacement is enabled
+	// This allows Wife3 to run in the background while keeping Psych Engine's score text
+	if (wife3_enabled && wife3_replaceScoreText) {
+		if (!miss) {
+			game.doScoreBop();
+		}
+		return Function_Stop;
+	}
+	return Function_Continue;
+}
+
+function onUpdateScore(miss:Bool) {
+	if (wife3_enabled && wife3_replaceScoreText) {
+		wife3_updateScoreText();
+	}
 }
 
 function goodNoteHit(note:Note) {
@@ -368,6 +572,11 @@ function goodNoteHit(note:Note) {
 	noteDiff = noteDiff / playbackRate;
 	var offsetSeconds = noteDiff / 1000.0;
 	var offsetMs = Math.abs(noteDiff);
+	
+	// Show timing feedback if enabled
+	if (wife3_showTimingDisplay) {
+		showTimingFeedback(noteDiff);
+	}
 
 	// Calculate Wife3 accuracy
 	var accuracy = wife3(offsetSeconds, wife3_judge_scale);
@@ -396,6 +605,11 @@ function goodNoteHit(note:Note) {
 	wife3_curAccuracy += accuracy;
 	wife3_maxAccuracy += wife3_max_points;
 	wife3_songScore += calculateSongScore(accuracy);
+	
+	// Update score text only if replacement is enabled
+	if (wife3_replaceScoreText) {
+		wife3_updateScoreText();
+	}
 }
 
 function noteMiss(note:Note) {
@@ -407,4 +621,17 @@ function noteMiss(note:Note) {
 	wife3_songScore += calculateSongScore(wife3_miss_weight);
 
 	debug('Note missed - Wife Penalty: ' + wife3_miss_weight + ', Total: ' + wife3_curAccuracy + '/' + wife3_maxAccuracy);
+
+	// Update score text only if replacement is enabled
+	if (wife3_replaceScoreText) {
+		wife3_updateScoreText();
+	}
+}
+
+function onDestroy() {
+	// Clean up timing display tween
+	if (timingTween != null) {
+		timingTween.cancel();
+		timingTween = null;
+	}
 }
