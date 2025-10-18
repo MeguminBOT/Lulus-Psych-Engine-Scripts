@@ -222,7 +222,7 @@ function showTimingFeedback(offset:Float) {
 
 	var absOffset = Math.abs(offset);
 	var prefix = offset > 0 ? '+' : '';
-	var roundedOffset = Math.round(offset * 10) / 10;
+	var roundedOffset = Math.round(offset * 100) / 100;
 	var timingStr = prefix + roundedOffset + 'ms';
 
 	// Determine color based on timing windows
