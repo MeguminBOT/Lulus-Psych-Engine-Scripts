@@ -48,7 +48,6 @@
 -- #####################################################################
 -- [[ Tween Configuration Tables ]]
 -- #####################################################################
-
 local validTweenTypes = {"Alpha", "Angle", "X", "Y", "Color", "Zoom", "Scale"}
 local tweenAltNames = {
 	Rotate = "Angle",
@@ -69,66 +68,8 @@ end
 -- #####################################################################
 -- [[ Custom Tween Implementation: Scale ]]
 -- #####################################################################
-
 local activeTweens = {}
 local tweenUpdateRate = 1 / 60 -- 60 FPS update rate
-
--- Custom implementation of scale tweening using runTimer
-local function doTweenScale(tag, object, toValue, duration, easeType)
-	-- Get current scale values
-	local startScaleX = getProperty(object .. ".scale.x")
-	local startScaleY = getProperty(object .. ".scale.y")
-
-	if startScaleX == nil or startScaleY == nil then
-		debugPrint('Tween Error: Object "' .. object .. '" does not exist or has no scale property')
-		return false
-	end
-
-	-- Store tween data
-	activeTweens[tag] = {
-		object = object,
-		startScaleX = startScaleX,
-		startScaleY = startScaleY,
-		targetScale = toValue,
-		duration = duration,
-		easeType = easeType,
-		elapsed = 0,
-		isActive = true
-	}
-
-	-- Start the update timer
-	runTimer("tween_scale_" .. tag, tweenUpdateRate, 0)
-	return true
-end
-
--- Update function for scale tweens
-local function updateScaleTween(tag, elapsed)
-	local tween = activeTweens[tag]
-	if not tween or not tween.isActive then
-		return false
-	end
-
-	tween.elapsed = tween.elapsed + elapsed
-	local progress = math.min(tween.elapsed / tween.duration, 1)
-	local easedProgress = applyEasing(progress, tween.easeType)
-	local currentScale = tween.startScaleX + (tween.targetScale - tween.startScaleX) * easedProgress
-
-	setProperty(tween.object .. ".scale.x", currentScale)
-	setProperty(tween.object .. ".scale.y", currentScale)
-
-	if progress >= 1 then
-		tween.isActive = false
-		cancelTimer("tween_scale_" .. tag)
-
-		if onTweenCompleted then
-			onTweenCompleted(tag)
-		end
-
-		return false
-	end
-
-	return true
-end
 
 -- Custom implementation of easing functions for the custom scale tween
 -- Mimics easing functions found in FlxEase
@@ -281,11 +222,66 @@ local function applyEasing(t, easeType)
 	return easingFunc and easingFunc(t) or t
 end
 
+-- Custom implementation of scale tweening using runTimer
+local function doTweenScale(tag, object, toValue, duration, easeType)
+	-- Get current scale values
+	local startScaleX = getProperty(object .. ".scale.x")
+	local startScaleY = getProperty(object .. ".scale.y")
+
+	if startScaleX == nil or startScaleY == nil then
+		debugPrint('Tween Error: Object "' .. object .. '" does not exist or has no scale property')
+		return false
+	end
+
+	-- Store tween data
+	activeTweens[tag] = {
+		object = object,
+		startScaleX = startScaleX,
+		startScaleY = startScaleY,
+		targetScale = toValue,
+		duration = duration,
+		easeType = easeType,
+		elapsed = 0,
+		isActive = true
+	}
+
+	-- Start the update timer
+	runTimer("tween_scale_" .. tag, tweenUpdateRate, 0)
+	return true
+end
+
+-- Update function for scale tweens
+local function updateScaleTween(tag, elapsed)
+	local tween = activeTweens[tag]
+	if not tween or not tween.isActive then
+		return false
+	end
+
+	tween.elapsed = tween.elapsed + elapsed
+	local progress = math.min(tween.elapsed / tween.duration, 1)
+	local easedProgress = applyEasing(progress, tween.easeType)
+	local currentScale = tween.startScaleX + (tween.targetScale - tween.startScaleX) * easedProgress
+
+	setProperty(tween.object .. ".scale.x", currentScale)
+	setProperty(tween.object .. ".scale.y", currentScale)
+
+	if progress >= 1 then
+		tween.isActive = false
+		cancelTimer("tween_scale_" .. tag)
+
+		if onTweenCompleted then
+			onTweenCompleted(tag)
+		end
+
+		return false
+	end
+
+	return true
+end
 
 -- #####################################################################
 -- [[ Event Functions ]]
 -- #####################################################################
-
 -- Parses the tween type, tag, and object from the input string.
 local function parseTweenNames(value)
 	local cleanValue = value:gsub(" ", "")
@@ -355,7 +351,6 @@ end
 -- #####################################################################
 -- [[ Bind our local functions to Psych Engine events ]]
 -- #####################################################################
-
 function onEvent(name, value1, value2)
 	if name == "Tween" then
 		local tweenType, tag, object = parseTweenNames(value1)
