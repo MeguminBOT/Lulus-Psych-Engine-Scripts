@@ -1,11 +1,11 @@
 # Lulu's Psych Engine Scripts
 My collection of scripts I've written to make modding easier or just for fun.
 
-On all my scripts inside the "scripts/" folder, you'll need to edit a variable ("local scriptEnabled") from false to true on whatever script you want to activate.
-
 ## Custom Events
 * [Camera Flash](custom_events/Camera%20Flash.lua)
 * [Tween (All in One)](custom_events/Tween.lua)
+* [Video Player](custom_events/Video%20Player.lua)
+* [Video Player Control](custom_events/Video%20Player%20Control.txt) (Dependant on Video Player)
 * [Window Name](custom_events/Window%20Name.lua)
 * [Window Name Shuffle](custom_events/Window%20Name%20Shuffle.txt) (Dependant on Window Name)
 * [Toggle Zoom on Beat](custom_events/Toggle%20Zoom%20on%20Beat.lua)
@@ -21,6 +21,11 @@ On all my scripts inside the "scripts/" folder, you'll need to edit a variable (
 * [ZOB Zoom Easetype](custom_events/ZOB%20Zoom%20Easetype.txt) (Dependant on ZOB Toggle Zoom on Beat/Step)
 
 ## Custom Global Scripts or Song Specific scripts etc.
-* [Temporarily Disable Anti-Alias](scripts/Temporarily%20Disable%20Anti-Alias.lua) (Recommended to load inside "data/YOURSONG")
-* [Half-Life 2 Style UI](scripts/Half-Life%202%20UI.lua) (Dependant on the Fonts folder)
-* [Half-Life 2 Style Fake Loading Screen](scripts/Half-Life%202%20Loading%20Screen.lua) (Dependant on the Images folder)
+
+| Script | Language | Enable Script Variable? | Requires Additional Assets? |
+|--------|----------|------------------------|----------------------------|
+| [Temporarily Disable Anti-Alias](scripts/Temporarily%20Disable%20Anti-Alias.lua) | Lua | Yes | No |
+| [Half-Life 2 Style UI](scripts/Half-Life%202%20UI.lua) | Lua | Yes | Yes (Requires Fonts folder) |
+| [Half-Life 2 Style Fake Loading Screen](scripts/Half-Life%202%20Loading%20Screen.lua) | Lua | Yes | Yes (Requires Images folder) |
+| [Video Manager](scripts/Video%20Manager.hx) | HScript | No | No |
+| [Wife3 Scoring System](scripts/Wife3%20Scoring%20System.hx) | HScript | No (Enabled by default) | No |
