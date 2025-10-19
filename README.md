@@ -22,10 +22,10 @@ My collection of scripts I've written to make modding easier or just for fun.
 
 ## Custom Global Scripts or Song Specific scripts etc.
 
-| Script | Language | Enable Script Variable? | Requires Additional Assets? |
-|--------|----------|------------------------|----------------------------|
-| [Temporarily Disable Anti-Alias](scripts/Temporarily%20Disable%20Anti-Alias.lua) | Lua | Yes | No |
-| [Half-Life 2 Style UI](scripts/Half-Life%202%20UI.lua) | Lua | Yes | Yes (Requires Fonts folder) |
-| [Half-Life 2 Style Fake Loading Screen](scripts/Half-Life%202%20Loading%20Screen.lua) | Lua | Yes | Yes (Requires Images folder) |
-| [Video Manager](scripts/Video%20Manager.hx) | HScript | No | No |
-| [Wife3 Scoring System](scripts/Wife3%20Scoring%20System.hx) | HScript | No (Enabled by default) | No |
+| Script | Language | Version | Enable Script Variable? | Requires Additional Assets? |
+|--------|----------|---------|------------------------|----------------------------|
+| [Temporarily Disable Anti-Alias](scripts/Temporarily%20Disable%20Anti-Alias.lua) | Lua | 0.6.x - 1.0.x | Yes | No |
+| [Half-Life 2 Style UI](scripts/Half-Life%202%20UI.lua) | Lua | 0.6.x - 1.0.x | Yes | Yes (Requires Fonts folder) |
+| [Half-Life 2 Style Fake Loading Screen](scripts/Half-Life%202%20Loading%20Screen.lua) | Lua | 0.6.x - 1.0.x | Yes | Yes (Requires Images folder) |
+| [Video Manager](scripts/Video%20Manager.hx) | HScript | 1.0+ | No | No |
+| [Wife3 Scoring System](scripts/Wife3%20Scoring%20System.hx) | HScript | 1.0+ | No (Enabled by default) | No |
