@@ -59,56 +59,63 @@ local function rgbToHex(r, g, b)
 	g = math.max(0, math.min(255, g))
 	b = math.max(0, math.min(255, b))
 
-	local hexR = string.format("%02X", r)
-	local hexG = string.format("%02X", g)
-	local hexB = string.format("%02X", b)
-	return hexR .. hexG .. hexB
+	return string.format("%02X%02X%02X", r, g, b)
 end
 
--- Parses the camera and forced value from the input string.
+-- Validates hex colour format
+local function isValidHex(hex)
+	return #hex == 6 and not hex:find("[^0-9A-Fa-f]")
+end
+
+-- Parses the camera and forced value from the input string
 local function parseCameraValue(value)
 	if not value or value == "" then
 		return defaultCamera, defaultForced
 	end
 
-	local camera, isForced = string.match(value:gsub(" ", ""), "(.*),(%a+)")
+	local cleanValue = value:gsub(" ", "")
+	local camera, forcedStr = string.match(cleanValue, "([^,]+),(%a+)")
 
-	if validCameras[camera] and isForced == "true" then
-		return camera, true
-	elseif validCameras[camera] then
-		return camera, false
+	if camera and validCameras[camera] then
+		return camera, forcedStr == "true"
 	end
 
 	return defaultCamera, defaultForced
 end
 
--- Parses the colour and duration from the input string.
+-- Parses the colour and duration from the input string
 local function parseFlashValue(value)
 	if not value or value == "" then
 		return defaultColour, defaultDuration
 	end
 
-	local colour, duration = string.match(value:gsub(" ", ""), "(.*),(.*)")
+	local cleanValue = value:gsub(" ", "")
+	local parts = {}
+	for part in string.gmatch(cleanValue, "[^,]+") do
+		table.insert(parts, part)
+	end
 
-	if not colour or not duration then
+	if #parts < 2 then
 		return defaultColour, defaultDuration
 	end
 
-	if colour:lower() == "random" then
-		local r = math.random(0, 255)
-		local g = math.random(0, 255)
-		local b = math.random(0, 255)
-		colour = rgbToHex(r, g, b)
-		return colour, tonumber(duration) or defaultDuration
-	else
-		local r, g, b = string.match(colour:gsub(" ", ""), "(%d+),(%d+),(%d+)")
+	local duration = tonumber(parts[#parts]) or defaultDuration
+
+	-- Handle 'random' colour
+	if parts[1]:lower() == "random" then
+		return rgbToHex(math.random(0, 255), math.random(0, 255), math.random(0, 255)), duration
+	end
+
+	-- Handle RGB (3 parts + duration)
+	if #parts == 4 then
+		local r, g, b = tonumber(parts[1]), tonumber(parts[2]), tonumber(parts[3])
 		if r and g and b then
-			colour = rgbToHex(tonumber(r), tonumber(g), tonumber(b))
-			return colour, tonumber(duration) or defaultDuration
-		else
-			return colour, tonumber(duration) or defaultDuration
+			return rgbToHex(r, g, b), duration
 		end
 	end
+
+	-- Handle HEX (1 part + duration)
+	return parts[1], duration
 end
 
 -- #####################################################################
@@ -117,6 +124,7 @@ end
 
 function onEvent(name, value1, value2)
 	if (name == "Camera Flash" or name == "Camera_Flash") and flashingLights then
+
 		local camera, isForced = parseCameraValue(value1)
 		local colour, duration = parseFlashValue(value2)
 
@@ -126,15 +134,10 @@ function onEvent(name, value1, value2)
 			debugPrint("  Camera: " .. camera .. " | Forced: " .. tostring(isForced))
 			debugPrint("  Colour: " .. colour .. " | Duration: " .. duration)
 
-			-- Validate hex colour format
-			local charIndex = string.find(colour, "[^0-9A-Fa-f]")
-			if colour:len() == 6 and charIndex then
-				debugPrint("  WARNING: Hex colour contains invalid character at index " .. charIndex)
-			elseif colour:len() ~= 6 then
-				debugPrint("  WARNING: Hex colour length is " .. colour:len() .. ", expected 6")
+			if not isValidHex(colour) then
+				debugPrint("  WARNING: Invalid hex colour format (expected 6 hex characters)")
 			end
 		end
-
 		cameraFlash(camera, colour, duration, isForced)
 	end
 end
