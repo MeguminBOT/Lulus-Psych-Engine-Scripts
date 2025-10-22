@@ -1,18 +1,21 @@
 /*
-	>>> Wife3 Scoring Script for Psych Engine
+	>>> Wife3 Scoring System for Psych Engine
 		HScript-based scoring system that implements Etterna's Wife3 accuracy calculation.
 		This by default replaces Psych Engine's default scoring system.
 		Can be used with Custom HUDs in Lua/HScript by using the provided global callbacks. 
 
 		Features:
-			- Full Wife3 port using Etterna source code as reference
-			- Wife3-inspired song score calculation
-			- Judge 1-9 presets for customizable difficulty
-			- Fully customizable judge scale instead of being limited to presets only.
+			- Full Wife3 accuracy calculations using Etterna source code as reference.
+			- Wife3-inspired song score calculation.
+			- Judge 1-9 presets for customizable difficulty.
+			- Customizable judge scale instead of being limited to presets only.
+			- *Optional* Timing feedback display showing hit accuracy in milliseconds.
+			- *Optional* Kade Engine style score text formatting.
+			- *Optional* Etterna style FC Tiers.
 
-		Place this script in 'mods/YourMod/scripts/' or 'mods/scripts/'
+		Place this script in 'mods/YourMod/scripts/' or 'mods/scripts/'.
 
-		See the wiki for API reference and usage examples.
+		See the wiki for API reference and usage examples in other scripts.
 		https://github.com/MeguminBOT/Lulus-Psych-Engine-Scripts/wiki/Wife3-Scoring-System.hx
 
 	Script by AutisticLulu.
@@ -24,10 +27,12 @@
 // --- General Settings ---
 var wife3_enabled = true;
 var wife3_debug = false;
-var wife3_replaceScoreText = true;
 var wife3_showTimingDisplay = true;
+var wife3_replaceScoreText = true;
+var wife3_kadeEngineStyle = false; // Whether to use Kade Engine style scoreText or Psych Engine style.
+var wife3_useEtternaFCTiers = false; // Whether to use Etterna FC tier names (MFC/SFC/GFC) or Psych Engine tier names (MFC/PFC/GFC)
 
-// --- Timing Display Variables ---
+// --- Timing Display Variables (Do Not Modify) ---
 var timingText:FlxText = null;
 var timingTween:FlxTween = null;
 
@@ -38,7 +43,7 @@ var wife3_j_pow = 0.75;
 var JUDGE_WINDOWS:Array<Float> = [4.0, 3.0, 2.0, 1.0, 0.9, 0.75, 0.6, 0.5, 0.4];
 
 // -- Judge Scale (modifiable, not recommended unless you know what you're doing) --
-var wife3_judge_scale = 1.0; // Baseline judge scale (1.0 = J4)
+var wife3_judge_scale = 1.0; // Baseline judge scale (1.0 = J4 | 0.4 = J9)
 
 // --- Accuracy Tracking (Do Not Modify) ---
 var wife3_curAccuracy = 0.0;
@@ -64,6 +69,7 @@ function registerCallbacks() {
 	createGlobalCallback('wife3_getGoodHits', wife3_getGoodHits);
 	createGlobalCallback('wife3_getBadHits', wife3_getBadHits);
 	createGlobalCallback('wife3_formatPercent', wife3_formatPercent);
+	createGlobalCallback('wife3_getRatingFC', wife3_getRatingFC);
 	createGlobalCallback('wife3_getTimingWindow', wife3_getTimingWindow);
 	createGlobalCallback('wife3_setEnabled', wife3_setEnabled);
 	createGlobalCallback('wife3_setJudgeScale', wife3_setJudgeScale);
@@ -74,6 +80,10 @@ function registerCallbacks() {
 	createGlobalCallback('wife3_updateScoreText', wife3_updateScoreText);
 	createGlobalCallback('wife3_setShowTimingDisplay', wife3_setShowTimingDisplay);
 	createGlobalCallback('wife3_getShowTimingDisplay', wife3_getShowTimingDisplay);
+	createGlobalCallback('wife3_setKadeEngineStyle', wife3_setKadeEngineStyle);
+	createGlobalCallback('wife3_getKadeEngineStyle', wife3_getKadeEngineStyle);
+	createGlobalCallback('wife3_setUseEtternaFCTiers', wife3_setUseEtternaFCTiers);
+	createGlobalCallback('wife3_getUseEtternaFCTiers', wife3_getUseEtternaFCTiers);
 
 	setVar('wife3_getAccuracy', wife3_getAccuracy);
 	setVar('wife3_getScore', wife3_getScore);
@@ -86,6 +96,7 @@ function registerCallbacks() {
 	setVar('wife3_getGoodHits', wife3_getGoodHits);
 	setVar('wife3_getBadHits', wife3_getBadHits);
 	setVar('wife3_formatPercent', wife3_formatPercent);
+	setVar('wife3_getRatingFC', wife3_getRatingFC);
 	setVar('wife3_getTimingWindow', wife3_getTimingWindow);
 	setVar('wife3_setEnabled', wife3_setEnabled);
 	setVar('wife3_setJudgeScale', wife3_setJudgeScale);
@@ -96,6 +107,10 @@ function registerCallbacks() {
 	setVar('wife3_updateScoreText', wife3_updateScoreText);
 	setVar('wife3_setShowTimingDisplay', wife3_setShowTimingDisplay);
 	setVar('wife3_getShowTimingDisplay', wife3_getShowTimingDisplay);
+	setVar('wife3_setKadeEngineStyle', wife3_setKadeEngineStyle);
+	setVar('wife3_getKadeEngineStyle', wife3_getKadeEngineStyle);
+	setVar('wife3_setUseEtternaFCTiers', wife3_setUseEtternaFCTiers);
+	setVar('wife3_getUseEtternaFCTiers', wife3_getUseEtternaFCTiers);
 }
 
 // ========================================
@@ -194,18 +209,30 @@ function calculateSongScore(accuracy:Float):Int {
 // HELPER FUNCTIONS
 // ========================================
 
+/**
+ * Enables or disables the Wife3 scoring system
+ * @param enabled Whether to enable Wife3 scoring
+ */
 function wife3_setEnabled(enabled:Bool) {
 	wife3_enabled = enabled;
 	setVar('wife3_enabled', wife3_enabled);
 	debug('Wife3 scoring ' + (enabled ? 'enabled' : 'disabled'));
 }
 
+/**
+ * Sets the judge scale for timing windows
+ * @param scale Judge scale value (clamped between 0.009 and 0.090)
+ */
 function wife3_setJudgeScale(scale:Float) {
 	wife3_judge_scale = Math.max(0.009, Math.min(0.090, scale));
 	var ms = Math.round(wife3_judge_scale * 10000) / 10;
 	debug('Wife3 Judge Scale set to: ' + wife3_judge_scale + 's (' + ms + 'ms Marvelous window)');
 }
 
+/**
+ * Sets the judge preset (1-9) for timing difficulty
+ * @param judgeNumber Judge preset number (1 = easiest/J1, 9 = hardest/J9/JUSTICE)
+ */
 function wife3_setJudgePreset(judgeNumber:Int) {
 	if (judgeNumber < 1 || judgeNumber > 9) {
 		debug('Invalid judge number: ' + judgeNumber + '. Must be 1-9.');
@@ -223,6 +250,9 @@ function wife3_setJudgePreset(judgeNumber:Int) {
 		+ 'ms)');
 }
 
+/**
+ * Resets all accuracy tracking variables to zero.
+ */
 function wife3_resetAccuracy() {
 	wife3_curAccuracy = 0.0;
 	wife3_maxAccuracy = 0.0;
@@ -233,13 +263,16 @@ function wife3_resetAccuracy() {
 	wife3_goodHits = 0;
 	wife3_badHits = 0;
 	debug('Wife3 accuracy reset');
-	
-	// Update score text only if replacement is enabled
+
 	if (wife3_replaceScoreText) {
 		wife3_updateScoreText();
 	}
 }
 
+/**
+ * Returns the current Wife3 accuracy as a percentage
+ * @return Accuracy percentage (0-100)
+ */
 function wife3_getAccuracy():Float {
 	if (wife3_maxAccuracy <= 0)
 		return 0.0;
@@ -247,6 +280,10 @@ function wife3_getAccuracy():Float {
 	return Math.max(0, Math.min(100, percent));
 }
 
+/**
+ * Returns the current song score calculated from Wife3 accuracy
+ * @return Total song score
+ */
 function wife3_getScore():Int {
 	return wife3_songScore;
 }
@@ -298,10 +335,19 @@ function wife3_getTimingWindow(windowType:String):Float {
 	}
 }
 
+/**
+ * Returns the current judge scale value
+ * @return Judge scale (1.0 = J4, 0.4 = J9, higher values = easier timing, lower values = harder timing)
+ */
 function wife3_getJudgeScale():Float {
 	return wife3_judge_scale;
 }
 
+/**
+ * Calculates the judge preset number from the current judge scale
+ * Returns values between 1-9 for standard presets, or interpolated/extrapolated values for custom scales
+ * @return Judge preset number (1 = easiest/J1, 9 = hardest/J9, with decimal values for in-between scales)
+ */
 function wife3_getJudgePreset():Float {
 	var currentScale = wife3_judge_scale;
 	var judgeCount = JUDGE_WINDOWS.length;
@@ -324,12 +370,12 @@ function wife3_getJudgePreset():Float {
 
 	var firstWindow = JUDGE_WINDOWS[0];
 	var lastWindow = JUDGE_WINDOWS[judgeCount - 1];
-	
+
 	if (currentScale >= firstWindow) {
 		var extrapolation = (currentScale - firstWindow) / (firstWindow - JUDGE_WINDOWS[1]);
 		return Math.max(0.1, 1.0 - extrapolation);
 	}
-	
+
 	if (currentScale <= lastWindow) {
 		var extrapolation = (lastWindow - currentScale) / (JUDGE_WINDOWS[judgeCount - 2] - lastWindow);
 		return 9.0 + extrapolation;
@@ -338,22 +384,42 @@ function wife3_getJudgePreset():Float {
 	return 4.0;
 }
 
+/**
+ * Returns the total number of marvelous hits
+ * @return Count of marvelous judgements (≤ 22ms * judge scale)
+ */
 function wife3_getMarvelousHits():Int {
 	return wife3_marvelousHits;
 }
 
+/**
+ * Returns the total number of perfect hits
+ * @return Count of perfect judgements (≤ 45ms * judge scale)
+ */
 function wife3_getPerfectHits():Int {
 	return wife3_perfectHits;
 }
 
+/**
+ * Returns the total number of great hits
+ * @return Count of great judgements (≤ 90ms * judge scale)
+ */
 function wife3_getGreatHits():Int {
 	return wife3_greatHits;
 }
 
+/**
+ * Returns the total number of good hits
+ * @return Count of good judgements (≤ 135ms * judge scale)
+ */
 function wife3_getGoodHits():Int {
 	return wife3_goodHits;
 }
 
+/**
+ * Returns the total number of bad hits
+ * @return Count of bad judgements (≤ 180ms * judge scale)
+ */
 function wife3_getBadHits():Int {
 	return wife3_badHits;
 }
@@ -367,69 +433,158 @@ function wife3_formatPercent(value:Float):String {
 	return Std.string(Math.floor(value * 100) / 100);
 }
 
+/**
+ * Gets the rating FC (Full Combo) tier based on judgement counts
+ * Supports both Etterna style and Psych Engine style tier names.
+ * Etterna: Marvelous/Perfect/Great/Good/Bad → MFC/PFC/GFC/FC
+ * Psych Engine: Marvelous/Sick/Good/Bad/Shit → MFC/SFC/GFC/FC
+ * @return Rating FC string (MFC, PFC/SFC, GFC, FC, SDCB, Clear)
+ */
+function wife3_getRatingFC():String {
+	var misses = game.songMisses;
+
+	if (misses > 0) {
+		if (misses < 10) {
+			return 'SDCB'; // Single Digit Combo Break
+		}
+		return 'Clear';
+	}
+
+	if (wife3_perfectHits == 0 && wife3_greatHits == 0 && wife3_goodHits == 0 && wife3_badHits == 0) {
+		return 'MFC';
+	}
+
+	if (wife3_greatHits == 0 && wife3_goodHits == 0 && wife3_badHits == 0) {
+		return wife3_useEtternaFCTiers ? 'PFC' : 'SFC';
+	}
+
+	if (wife3_goodHits == 0 && wife3_badHits == 0) {
+		return 'GFC';
+	}
+
+	return 'FC';
+}
+
+/**
+ * Enables or disables Wife3 score text replacement
+ * @param replace Whether to replace Psych Engine's default score text
+ */
 function wife3_setReplaceScoreText(replace:Bool) {
 	wife3_replaceScoreText = replace;
 	setVar('wife3_replaceScoreText', wife3_replaceScoreText);
 	debug('Replace Psych Engine score text: ' + (replace ? 'enabled' : 'disabled'));
 }
 
+/**
+ * Returns whether Wife3 score text replacement is enabled
+ * @return Current state of score text replacement
+ */
 function wife3_getReplaceScoreText():Bool {
 	return wife3_replaceScoreText;
 }
 
+/**
+ * Shows or hides the timing display feedback
+ * @param show Whether to show the timing display
+ */
 function wife3_setShowTimingDisplay(show:Bool) {
 	wife3_showTimingDisplay = show;
 	setVar('wife3_showTimingDisplay', wife3_showTimingDisplay);
-	
+
 	if (!show && timingText != null) {
-		// Hide timing display if disabled
 		timingText.visible = false;
 		if (timingTween != null) {
 			timingTween.cancel();
 			timingTween = null;
 		}
 	} else if (show && timingText != null) {
-		// Show timing display if enabled
 		timingText.visible = true;
 	}
-	
+
 	debug('Timing display ' + (show ? 'enabled' : 'disabled'));
 }
 
+/**
+ * Returns whether the timing display is enabled
+ * @return Current state of timing display
+ */
 function wife3_getShowTimingDisplay():Bool {
 	return wife3_showTimingDisplay;
 }
 
+/**
+ * Sets the score text format style
+ * @param kadeStyle If true, uses Kade Engine format; if false, uses Psych Engine format
+ */
+function wife3_setKadeEngineStyle(kadeStyle:Bool) {
+	wife3_kadeEngineStyle = kadeStyle;
+	setVar('wife3_kadeEngineStyle', wife3_kadeEngineStyle);
+	debug('Kade Engine style score text ' + (kadeStyle ? 'enabled' : 'disabled'));
+}
+
+/**
+ * Returns the current score text format style
+ * @return True if using Kade Engine style, false if using Psych Engine style
+ */
+function wife3_getKadeEngineStyle():Bool {
+	return wife3_kadeEngineStyle;
+}
+
+/**
+ * Sets which FC tier naming convention to use
+ * @param useEtterna If true, uses Etterna tier names (PFC); if false, uses Psych Engine tier names (SFC)
+ */
+function wife3_setUseEtternaFCTiers(useEtterna:Bool) {
+	wife3_useEtternaFCTiers = useEtterna;
+	setVar('wife3_useEtternaFCTiers', wife3_useEtternaFCTiers);
+	debug('Using ' + (useEtterna ? 'Etterna' : 'Psych Engine') + ' style FC tier names');
+}
+
+/**
+ * Returns which FC tier naming convention is being used
+ * @return True if using Etterna style, false if using Psych Engine style
+ */
+function wife3_getUseEtternaFCTiers():Bool {
+	return wife3_useEtternaFCTiers;
+}
+
+/**
+ * Creates and initializes the timing display text object
+ * Sets up formatting, positioning, and adds it to the scene
+ */
 function createTimingDisplay() {
-	if (timingText != null) return; // Already created
-	
-	// Create timing display text
+	if (timingText != null)
+		return;
+
 	timingText = new FlxText(0, 0, 200, '');
 	timingText.setFormat(Paths.font('vcr.ttf'), 18, FlxColor.WHITE, 'center', 'outline', FlxColor.BLACK);
 	timingText.scrollFactor.set();
 	timingText.borderSize = 1.5;
 	timingText.cameras = [game.camHUD];
 	timingText.alpha = 0;
-	
-	// Position timing display in the middle of the playfield
+
 	positionTimingDisplay();
-	
-	// Add to scene
+
 	game.add(timingText);
-	
+
 	debug('Timing display created');
 }
 
+/**
+ * Positions the timing display text in the center of the player's strum line
+ * Falls back to screen center if strums are not available
+ */
 function positionTimingDisplay() {
-	if (timingText == null) return;
-	
+	if (timingText == null)
+		return;
+
 	// Position timing display in the middle of the playfield
 	if (game.playerStrums != null && game.playerStrums.members.length >= 4) {
 		var firstStrumX = game.playerStrums.members[0].x;
 		var lastStrumX = game.playerStrums.members[3].x;
 		var strumWidth = game.playerStrums.members[0].width;
 		var totalWidth = (lastStrumX + strumWidth) - firstStrumX;
-		
+
 		// Center the timing text in the middle of the playfield
 		timingText.x = firstStrumX + (totalWidth / 2) - (timingText.width / 2);
 		timingText.y = FlxG.height / 2; // Always use screen center for Y position
@@ -440,45 +595,43 @@ function positionTimingDisplay() {
 	}
 }
 
+/**
+ * Displays timing feedback for a note hit with color-coded accuracy
+ * Shows the timing offset in milliseconds with an animated fade in/out effect
+ * @param offset Timing offset in milliseconds (positive = late, negative = early)
+ */
 function showTimingFeedback(offset:Float) {
-	// Only show timing feedback if timing display is enabled and text exists
 	if (!wife3_enabled || !wife3_showTimingDisplay || timingText == null)
 		return;
-	
+
 	var absOffset = Math.abs(offset);
 	var prefix = offset > 0 ? '+' : '';
 	var roundedOffset = Math.round(offset * 100) / 100;
 	var timingStr = prefix + roundedOffset + 'ms';
-	
-	// Determine color based on timing windows
-	var color = FlxColor.WHITE; // Default/Marvelous
-	
-	// Check timing windows using Wife3 system
+
+	var color = FlxColor.WHITE;
 	if (absOffset > wife3_getTimingWindow('marvelous'))
-		color = FlxColor.YELLOW; // Perfect
+		color = FlxColor.YELLOW;
 	if (absOffset > wife3_getTimingWindow('perfect'))
-		color = FlxColor.GREEN; // Great
+		color = FlxColor.GREEN;
 	if (absOffset > wife3_getTimingWindow('great'))
-		color = FlxColor.CYAN; // Good
+		color = FlxColor.CYAN;
 	if (absOffset > wife3_getTimingWindow('good'))
-		color = FlxColor.MAGENTA; // Bad
+		color = FlxColor.MAGENTA;
 	if (absOffset > wife3_getTimingWindow('bad'))
-		color = FlxColor.RED; // Way off
-	
+		color = FlxColor.RED;
+
 	timingText.text = timingStr;
 	timingText.color = color;
-	
-	// Cancel existing tween
+
 	if (timingTween != null) {
 		timingTween.cancel();
 	}
-	
-	// Animate in
+
 	timingText.alpha = 0;
-	// Always start from screen center
 	timingText.y = FlxG.height / 2;
 	timingText.scale.set(1.05, 1.05);
-	
+
 	timingTween = FlxTween.tween(timingText, {
 		alpha: 1,
 		y: (FlxG.height / 2) - 15,
@@ -486,14 +639,12 @@ function showTimingFeedback(offset:Float) {
 		'scale.y': 1
 	}, 0.1, {
 		onComplete: function(twn:FlxTween) {
-			// Fade out
 			timingTween = FlxTween.tween(timingText, {
 				alpha: 0,
 				y: (FlxG.height / 2) - 25
 			}, 0.3, {
 				startDelay: 0.3,
 				onComplete: function(twn:FlxTween) {
-					// Reset to screen center when animation completes
 					timingText.y = FlxG.height / 2;
 					timingTween = null;
 				}
@@ -504,24 +655,34 @@ function showTimingFeedback(offset:Float) {
 
 /**
  * Updates the score text with Wife3 information
- * This function replaces Psych Engine's default score text format
+ * This function replaces the default scoreText content.
+ * Can use either Psych Engine or Kade Engine formatting.
  */
 function wife3_updateScoreText() {
-	// Only update score text if Wife3 is enabled AND score text replacement is enabled
-	if (!wife3_enabled || !wife3_replaceScoreText) return;
-	
-	var accuracy = wife3_getAccuracy();
-	var grade = wife3_getGrade(accuracy);
+	if (!wife3_enabled || !wife3_replaceScoreText)
+		return;
+
 	var score = wife3_getScore();
-	var formattedPercent = wife3_formatPercent(accuracy);
-	
-	// Get current misses from the game
 	var misses = game.songMisses;
-	
-	// Create Wife3 score text format
-	var scoreText = 'Score: ' + score + ' | Misses: ' + misses + ' | Rating: ' + formattedPercent + '% (' + grade + ')';
-	
-	// Update the score text
+	var hasHitNotes = (wife3_maxAccuracy > 0);
+
+	var scoreText = '';
+
+	if (hasHitNotes) {
+		var accuracy = wife3_getAccuracy();
+		var formattedPercent = wife3_formatPercent(accuracy);
+		var grade = wife3_getGrade(accuracy);
+		var ratingFC = wife3_getRatingFC();
+
+		scoreText = wife3_kadeEngineStyle
+			? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC + ') ' + grade
+			: 'Score: ' + score + ' | Misses: ' + misses + ' | Rating: ' + grade + ' (' + formattedPercent + '%) - ' + ratingFC;
+	} else {
+		scoreText = wife3_kadeEngineStyle
+			? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ?'
+			: 'Score: ' + score + ' | Misses: ' + misses + ' | Rating: ?';
+	}
+
 	game.scoreTxt.text = scoreText;
 }
 
@@ -537,8 +698,7 @@ function onCreate() {
 
 function onCreatePost() {
 	wife3_resetAccuracy();
-	
-	// Create timing display if enabled
+
 	if (wife3_showTimingDisplay) {
 		createTimingDisplay();
 	}
@@ -563,8 +723,7 @@ function onUpdateScore(miss:Bool) {
 }
 
 function goodNoteHit(note:Note) {
-	if (!wife3_enabled || note.isSustainNote || !note.mustPress)
-		return;
+	if (!wife3_enabled || note.isSustainNote || !note.mustPress) return;
 
 	// Calculate timing offset
 	var noteDiff = note.strumTime - Conductor.songPosition;
@@ -572,8 +731,7 @@ function goodNoteHit(note:Note) {
 	noteDiff = noteDiff / playbackRate;
 	var offsetSeconds = noteDiff / 1000.0;
 	var offsetMs = Math.abs(noteDiff);
-	
-	// Show timing feedback if enabled
+
 	if (wife3_showTimingDisplay) {
 		showTimingFeedback(noteDiff);
 	}
@@ -582,7 +740,6 @@ function goodNoteHit(note:Note) {
 	var accuracy = wife3(offsetSeconds, wife3_judge_scale);
 
 	// Track judgements based on timing windows (scaled by judge scale)
-	// Note: We always increment a counter, even for notes outside bad window
 	if (offsetMs <= wife3_getTimingWindow('marvelous')) {
 		wife3_marvelousHits = wife3_marvelousHits + 1;
 		setVar('wife3_marvelousHits', wife3_marvelousHits);
@@ -605,8 +762,7 @@ function goodNoteHit(note:Note) {
 	wife3_curAccuracy += accuracy;
 	wife3_maxAccuracy += wife3_max_points;
 	wife3_songScore += calculateSongScore(accuracy);
-	
-	// Update score text only if replacement is enabled
+
 	if (wife3_replaceScoreText) {
 		wife3_updateScoreText();
 	}
@@ -622,14 +778,12 @@ function noteMiss(note:Note) {
 
 	debug('Note missed - Wife Penalty: ' + wife3_miss_weight + ', Total: ' + wife3_curAccuracy + '/' + wife3_maxAccuracy);
 
-	// Update score text only if replacement is enabled
 	if (wife3_replaceScoreText) {
 		wife3_updateScoreText();
 	}
 }
 
 function onDestroy() {
-	// Clean up timing display tween
 	if (timingTween != null) {
 		timingTween.cancel();
 		timingTween = null;
