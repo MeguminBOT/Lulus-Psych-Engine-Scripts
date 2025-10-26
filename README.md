@@ -29,3 +29,4 @@ My collection of scripts I've written to make modding easier or just for fun.
 | [Half-Life 2 Style Fake Loading Screen](scripts/Half-Life%202%20Loading%20Screen.lua) | Lua | 0.6.x - 1.0.x | Yes | Yes (Requires Images folder) |
 | [Video Manager](scripts/Video%20Manager.hx) | HScript | 1.0+ | No | No |
 | [Wife3 Scoring System](scripts/Wife3%20Scoring%20System.hx) | HScript | 1.0+ | No (Enabled by default) | No |
+| [Note Cache System](scripts/Note%20Cache%20System.hx) | HScript | 1.0+ | Yes (Disabled by default) | No |
