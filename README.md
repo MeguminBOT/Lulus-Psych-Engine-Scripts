@@ -30,3 +30,4 @@ My collection of scripts I've written to make modding easier or just for fun.
 | [Video Manager](scripts/Video%20Manager.hx) | HScript | 1.0+ | No | No | Yes |
 | [Wife3 Scoring System](scripts/Wife3%20Scoring%20System.hx) | HScript | 1.0+ | No (Enabled by default) | No | Yes |
 | [Note Cache System](scripts/Note%20Cache%20System.hx) | HScript | 1.0+ | Yes (Disabled by default) | No | No |
+| [Rewind NoteCacher](scripts/Rewind%20NoteCacher.hx) | HScript | 1.0+ | No | Yes (Requires Note Cache System) | No |
