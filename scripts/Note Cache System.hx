@@ -1,5 +1,5 @@
 /*
-	>>> Note Cacher System for Psych Engine
+	>>> Note Cache System for Psych Engine
 		This script does nothing on it's own but provides a set of functions.
 		These functions can be used to cache, clear, respawn notes or just to get all data at once.
 		Place this script in 'mods/YourMod/scripts/' or 'mods/scripts/'.
@@ -12,7 +12,7 @@
 // ========================================
 // --- General Settings ---
 
-var noteCache_enabled:Bool = false;
+var noteCache_enabled:Bool = true;
 var noteCache_debug:Bool = true;
 var noteCache_useTrace:Bool = true;
 var noteCache_useDebugPrint:Bool = false;
@@ -37,6 +37,13 @@ function registerCallbacks() {
 	setVar('noteCacher_getCachedNoteData', getCachedNoteData);
 	setVar('noteCacher_findNoteDataByTime', findNoteDataByTime);
 	setVar('noteCacher_printNoteInfo', printNoteInfo);
+
+
+	setVar('noteCacher_totalCachedNotes', cachedNotes);
+	setVar('noteCacher_totalPlayerNotes', cachedPlayerNotes);
+	setVar('noteCacher_totalOpponentNotes', cachedOpponentNotes);
+	setVar('noteCacher_noteDataCache', noteDataCache);
+	setVar('noteCacher_replacementLookup', replacementLookup);
 
 	createGlobalCallback('noteCacher_respawnNote', respawnNote);
 	createGlobalCallback('noteCacher_respawnNoteAtTime', respawnNoteAtTime);
@@ -116,6 +123,7 @@ function cacheNotes() {
 				lateHitMult: note.lateHitMult,
 				lowPriority: note.lowPriority
 			};
+
 			noteDataCache.push(noteData);
 
 			if (note.mustPress) {
@@ -444,7 +452,7 @@ function updateParentChain(newNote:Dynamic, parentNote:Dynamic, ?startTime:Float
 		if (remove) {
 			parentNote.tail.splice(i, 1);
 		} else {
-			i++;
+			i = i + 1;
 		}
 	}
 
@@ -768,6 +776,7 @@ function onCreatePost() {
 		debug('Cached ' + cachedNotes.length + ' total notes');
 		debug('' + cachedPlayerNotes.length + ' player notes');
 		debug('' + cachedOpponentNotes.length + ' opponent notes');
+
 	} else {
 		debug('No notes found to cache!');
 	}

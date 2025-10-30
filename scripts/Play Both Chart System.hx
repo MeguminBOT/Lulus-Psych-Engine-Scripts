@@ -12,6 +12,8 @@
 			- Opponent: Prioritize Dad's notes when both sides has notes.
 			- Density: Play the side with more notes in the section.
 			- Unmodified: No filtering, both sides notes are played as is, this is not recommended and just for fun.
+		- Settings.json support: Configure settings through the mod settings menu
+			- Settings from settings.json will override the default values in the script
 		
 
 		To do:
@@ -28,30 +30,114 @@
 // CONFIGURATION & VARIABLES
 // ========================================
 
-var doubleChart:Bool = false;
-var doubleChartType:String = 'Player'; // Options: 'Player', 'Opponent', 'Density', 'Unmodified'
-var opponentIsPlaying:Bool = false;
+var doubleChart:Bool = true;
+var doubleChartType:String = 'Density'; // Options: 'Player', 'Opponent', 'Density', 'Unmodified'
 
 // Debug settings
-var debug_enabled:Bool = false;
-var debug_showNoteAssignment:Bool = false; // Temporary: enable detailed logging for troubleshooting
+var doubleChart_debug:Bool = true;
+var doubleChart_useTrace:Bool = true;
+var doubleChart_useDebugPrint:Bool = false;
+var doubleChart_verboseOutput:Bool = false; // Enable detailed logging for troubleshooting, vastly increases log size and loading times.
+
 // Cache system integration
-var noteCacheEnabled:Bool = true;
-var cachedNoteData:Array<Dynamic> = [];
+var noteCacheEnabled:Bool = true; // Currently required for this script to function.
+var cachedNoteData:Array<Dynamic> = []; // Cached note data from Note Cache System
+
+// Script internal variables (DO NOT MODIFY THESE DIRECTLY)
+var opponentIsPlaying:Bool = false;
+
+// ========================================
+// SETTINGS LOADER
+// ========================================
+
+/**
+ * Loads settings from settings.json using getModSetting if available.
+ * Settings from settings.json will override the default values above.
+ */
+function loadSettings() {
+	// Check if settings.json exists
+	var settingsPath:String = 'data/settings.json';
+	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
+		trace('[Double Chart] settings.json not found, using values directly from the script');
+		return;
+	}
+	
+	trace('[Double Chart] settings.json found, Loading settings...');
+	
+	// Try to load each setting from settings.json
+	var settingValue:Dynamic = null;
+	
+	// Load doubleChart setting
+	settingValue = getModSetting('doubleChart');
+	if (settingValue != null) {
+		doubleChart = settingValue;
+		debug('Loaded doubleChart from settings: ' + doubleChart);
+	}
+	
+	// Load doubleChartType setting
+	settingValue = getModSetting('doubleChartType');
+	if (settingValue != null) {
+		doubleChartType = settingValue;
+		debug('Loaded doubleChartType from settings: ' + doubleChartType);
+	}
+	
+	// Load doubleChart_debug setting
+	settingValue = getModSetting('doubleChart_debug');
+	if (settingValue != null) {
+		doubleChart_debug = settingValue;
+		debug('Loaded doubleChart_debug from settings: ' + doubleChart_debug);
+	}
+	
+	// Load doubleChart_useTrace setting
+	settingValue = getModSetting('doubleChart_useTrace');
+	if (settingValue != null) {
+		doubleChart_useTrace = settingValue;
+		debug('Loaded doubleChart_useTrace from settings: ' + doubleChart_useTrace);
+	}
+	
+	// Load doubleChart_useDebugPrint setting
+	settingValue = getModSetting('doubleChart_useDebugPrint');
+	if (settingValue != null) {
+		doubleChart_useDebugPrint = settingValue;
+		debug('Loaded doubleChart_useDebugPrint from settings: ' + doubleChart_useDebugPrint);
+	}
+	
+	// Load doubleChart_verboseOutput setting
+	settingValue = getModSetting('doubleChart_verboseOutput');
+	if (settingValue != null) {
+		doubleChart_verboseOutput = settingValue;
+		debug('Loaded doubleChart_verboseOutput from settings: ' + doubleChart_verboseOutput);
+	}
+}
+
+// ========================================
+// DEBUG HELPER
+// ========================================
+
+/**
+ * Helper function to print debug messages or traces only if doubleChart_debug is true
+ * @param message Message to print
+ * @param color Optional color for the debug text (FlxColor)
+ */
+function debug(message:String, ?color:FlxColor = null) {
+	if (!doubleChart_debug)
+		return;
+
+	if (color == null)
+		color = FlxColor.WHITE;
+
+	if (doubleChart_useDebugPrint) {
+		debugPrint('[Double Chart] ' + message, color);
+	}
+
+	if (doubleChart_useTrace) {
+		trace('[Double Chart] ' + message);
+	}
+}
 
 // ========================================
 // HELPER FUNCTIONS
 // ========================================
-
-/**
- * Logs debug messages to the console when debug mode is enabled.
- * @param message The debug message to log
- */
-function debug(message:String) {
-	if (!debug_enabled)
-		return;
-	trace('[Play Both Chart] ' + message);
-}
 
 /**
  * Adds an index to an array only if it doesn't already exist and is valid (>= 0).
@@ -343,13 +429,13 @@ function mapBaseNotesToSections(noteDataList:Array<Dynamic>):Array<Int> {
 
 		for (noteEntry in section.sectionNotes) {
 			while (cacheIndex < noteDataList.length && noteDataList[cacheIndex].isSustainNote) {
-				cacheIndex++;
+				cacheIndex = cacheIndex + 1;
 			}
 			if (cacheIndex >= noteDataList.length) {
 				break;
 			}
 			mapping[cacheIndex] = secIdx;
-			cacheIndex++;
+			cacheIndex = cacheIndex + 1;
 		}
 	}
 
@@ -381,10 +467,12 @@ function getOriginalMustPress(noteData:Dynamic):Bool {
 function prepareNoteForDoubleChart(note:Dynamic, noteData:Dynamic, originFromDad:Bool, isPlayer:Bool) {
 	note.extraData.set('noteOriginDad', originFromDad);
 	note.extraData.set('doubleChartOriginalMustPress', getOriginalMustPress(noteData));
+
 	var storedNoAnim = note.extraData.get('doubleChartOriginalNoAnimation');
 	if (storedNoAnim == null)
 		storedNoAnim = note.noAnimation;
 	note.extraData.set('doubleChartOriginalNoAnimation', storedNoAnim);
+
 	var storedNoMiss = note.extraData.get('doubleChartOriginalNoMissAnimation');
 	if (storedNoMiss == null)
 		storedNoMiss = note.noMissAnimation;
@@ -493,34 +581,18 @@ function updateCacheBuckets(playerIndices:Array<Int>, opponentIndices:Array<Int>
 }
 
 /**
- * Rebuilds the chart from the Note Cache System based on the current double chart mode and type.
- * This is the main function that implements the double chart logic.
+ * Groups notes by their section indices.
+ * @param noteDataList Array of cached note data
+ * @param sectionBoundaries Array of section timing boundaries
+ * @param baseNoteSectionMap Pre-computed section map for base notes
+ * @return Array of sections, each containing note info objects
  */
-function rebuildChartFromCache() {
-	// Get the cached note data from Note Cache System
-	cachedNoteData = getVar('noteCacher_noteDataCache');
-	var cachedNoteObjects:Array<Dynamic> = getVar('noteCacher_totalCachedNotes');
-
-	if (cachedNoteData == null || cachedNoteData.length == 0) {
-		debug('ERROR: Note Cache System data not available!');
-		return;
-	}
-
-	if (cachedNoteObjects == null || cachedNoteObjects.length == 0) {
-		debug('ERROR: Note Cache System object cache not available!');
-		return;
-	}
-
-	debug('Retrieved ' + cachedNoteData.length + ' cached notes');
-
-	var sustainLookup:Array<Array<Int>> = buildSustainIndexLookup(cachedNoteData, cachedNoteObjects);
-
-	// Group cached notes by sections
-	var sectionBoundaries:Array<Dynamic> = buildSectionBoundaries();
+function groupNotesBySection(noteDataList:Array<Dynamic>, sectionBoundaries:Array<Dynamic>, baseNoteSectionMap:Array<Int>):Array<Array<Dynamic>> {
 	var fallbackSectionLength:Float = Conductor.stepCrochet * 16;
-	var baseNoteSectionMap:Array<Int> = mapBaseNotesToSections(cachedNoteData);
 	var songSections:Int = PlayState.SONG != null && PlayState.SONG.notes != null ? PlayState.SONG.notes.length : 0;
 	var notesBySection:Array<Array<Dynamic>> = [];
+	
+	// Initialize section arrays
 	if (songSections > 0) {
 		for (i in 0...songSections) {
 			notesBySection.push([]);
@@ -531,9 +603,9 @@ function rebuildChartFromCache() {
 		}
 	}
 
-	// Build section groupings
-	for (i in 0...cachedNoteData.length) {
-		var noteData = cachedNoteData[i];
+	// Group notes into sections
+	for (i in 0...noteDataList.length) {
+		var noteData = noteDataList[i];
 		// Skip sustain notes in grouping
 		if (noteData.isSustainNote)
 			continue;
@@ -555,10 +627,47 @@ function rebuildChartFromCache() {
 	}
 
 	debug('Grouped notes into ' + notesBySection.length + ' sections');
+	return notesBySection;
+}
 
-	// Determine which notes should be playable per section
+/**
+ * Counts original note distribution before filtering.
+ * @param noteDataList Array of cached note data
+ * @return Object with originalPlayerNotes and originalOpponentNotes counts
+ */
+function countOriginalNotes(noteDataList:Array<Dynamic>):Dynamic {
+	var originalPlayerNotes:Int = 0;
+	var originalOpponentNotes:Int = 0;
+	
+	for (i in 0...noteDataList.length) {
+		var noteData = noteDataList[i];
+		if (noteData == null)
+			continue;
+		
+		var originalMustPress:Bool = getOriginalMustPress(noteData);
+		if (originalMustPress) {
+			originalPlayerNotes = originalPlayerNotes + 1;
+		} else {
+			originalOpponentNotes = originalOpponentNotes + 1;
+		}
+	}
+	
+	return {
+		player: originalPlayerNotes,
+		opponent: originalOpponentNotes
+	};
+}
+
+/**
+ * Filters notes by section and assigns them to player or opponent based on double chart mode.
+ * @param notesBySection Array of sections containing note info objects
+ * @param sustainLookup Lookup table for sustain chains
+ * @return Object containing playerNoteIndices, opponentNoteIndices, and sectionsWithBorrowedNotes count
+ */
+function filterNotesBySections(notesBySection:Array<Array<Dynamic>>, sustainLookup:Array<Array<Int>>):Dynamic {
 	var playerNoteIndices:Array<Int> = [];
 	var opponentNoteIndices:Array<Int> = [];
+	var sectionsWithBorrowedNotes:Int = 0;
 
 	for (secIdx in 0...notesBySection.length) {
 		if (notesBySection[secIdx] == null || notesBySection[secIdx].length == 0)
@@ -566,11 +675,18 @@ function rebuildChartFromCache() {
 
 		var notesInSection:Array<Dynamic> = notesBySection[secIdx];
 		var mustHitBfSide:Bool = determineMustHitBfSideFromCache(notesInSection);
+		var hasBorrowedNotes:Bool = false;
 
-		// Mark notes that should be respawned
+		// Assign notes to player or opponent
 		for (noteInfo in notesInSection) {
 			var noteData = noteInfo.data;
+			var originalMustPress:Bool = getOriginalMustPress(noteData);
 			var shouldBePlayer:Bool = shouldNoteBePlayable(noteData, mustHitBfSide);
+			
+			// Check if this note is being borrowed (played by opposite side)
+			if (originalMustPress != shouldBePlayer) {
+				hasBorrowedNotes = true;
+			}
 
 			if (shouldBePlayer) {
 				addIndexUnique(playerNoteIndices, noteInfo.index);
@@ -580,11 +696,28 @@ function rebuildChartFromCache() {
 				includeSustainChainIndices(noteInfo.index, opponentNoteIndices, sustainLookup);
 			}
 		}
+		
+		if (hasBorrowedNotes) {
+			sectionsWithBorrowedNotes = sectionsWithBorrowedNotes + 1;
+		}
 	}
 
-	var sortFunc = function(a, b) {
-		var dataA = cachedNoteData[a];
-		var dataB = cachedNoteData[b];
+	return {
+		playerIndices: playerNoteIndices,
+		opponentIndices: opponentNoteIndices,
+		borrowedSections: sectionsWithBorrowedNotes
+	};
+}
+
+/**
+ * Sorts note indices by their strum time and index.
+ * @param indices Array of note indices to sort
+ * @param noteDataList Array of cached note data
+ */
+function sortNoteIndices(indices:Array<Int>, noteDataList:Array<Dynamic>) {
+	indices.sort(function(a, b) {
+		var dataA = noteDataList[a];
+		var dataB = noteDataList[b];
 		if (dataA != null && dataB != null) {
 			if (dataA.strumTime < dataB.strumTime)
 				return -1;
@@ -596,37 +729,29 @@ function rebuildChartFromCache() {
 		if (a > b)
 			return 1;
 		return 0;
-	};
+	});
+}
 
-	playerNoteIndices.sort(sortFunc);
-	opponentNoteIndices.sort(sortFunc);
-
-	var totalSelected:Int = playerNoteIndices.length + opponentNoteIndices.length;
-	debug('Selected '
-		+ playerNoteIndices.length
-		+ ' player notes and '
-		+ opponentNoteIndices.length
-		+ ' opponent notes for rebuild');
-
-	if (totalSelected == 0) {
-		debug('ERROR: No notes selected for rebuild!');
-		return;
-	}
-
-	game.notes.clear();
-
-	debug('Starting rebuild pass for ' + totalSelected + ' notes...');
-
+/**
+ * Creates a sorted process list from player and opponent note indices.
+ * @param playerIndices Array of player note indices
+ * @param opponentIndices Array of opponent note indices
+ * @param noteDataList Array of cached note data
+ * @return Sorted array of process entries with index and toPlayer flag
+ */
+function createProcessList(playerIndices:Array<Int>, opponentIndices:Array<Int>, noteDataList:Array<Dynamic>):Array<Dynamic> {
 	var processList:Array<Dynamic> = [];
-	for (idx in playerNoteIndices) {
+	
+	for (idx in playerIndices) {
 		processList.push({index: idx, toPlayer: true});
 	}
-	for (idx in opponentNoteIndices) {
+	for (idx in opponentIndices) {
 		processList.push({index: idx, toPlayer: false});
 	}
+	
 	processList.sort(function(a, b) {
-		var dataA = cachedNoteData[a.index];
-		var dataB = cachedNoteData[b.index];
+		var dataA = noteDataList[a.index];
+		var dataB = noteDataList[b.index];
 		if (dataA != null && dataB != null) {
 			if (dataA.strumTime < dataB.strumTime)
 				return -1;
@@ -639,68 +764,161 @@ function rebuildChartFromCache() {
 			return 1;
 		return 0;
 	});
+	
+	return processList;
+}
 
+/**
+ * Calculates the lane index for a note based on its direction and side.
+ * @param noteData The note's cached data
+ * @param toPlayer Whether this note is assigned to the player
+ * @return The lane index (0-3 for player, 4-7 for opponent)
+ */
+function calculateNoteLane(noteData:Dynamic, toPlayer:Bool):Int {
+	var baseLane:Int = noteData.noteData % 4;
+	if (baseLane < 0)
+		baseLane += 4;
+	return toPlayer ? baseLane : (baseLane + 4);
+}
+
+/**
+ * Finds and validates the head note for a sustain note.
+ * @param sustainNote The sustain note object
+ * @param sustainData The sustain note's cached data
+ * @param lane The lane index to search in
+ * @param sustainHeadPerLane Array tracking head notes per lane
+ * @param previousNote The previous note in the overall sequence
+ * @param noteIndex The sustain note's cache index (for debug logging)
+ * @return The validated head note, or null if not found/invalid
+ */
+function findValidatedHeadNote(sustainNote:Dynamic, sustainData:Dynamic, lane:Int, sustainHeadPerLane:Array<Dynamic>, previousNote:Dynamic, noteIndex:Int):Dynamic {
+	var headNote:Dynamic = sustainHeadPerLane[lane];
+	
+	// Fallback: if head not found in expected lane, check if previous note is valid head
+	if (headNote == null && previousNote != null && !previousNote.isSustainNote) {
+		headNote = previousNote;
+	}
+	
+	// Verify the head note is on the same side and same note direction
+	if (headNote != null) {
+		var headLane:Int = headNote.noteData % 4;
+		if (headLane < 0) headLane += 4;
+		var thisBaseLane:Int = sustainData.noteData % 4;
+		if (thisBaseLane < 0) thisBaseLane += 4;
+		
+		// If lanes don't match, don't attach (prevents wrong parent)
+		if (headLane != thisBaseLane || headNote.mustPress != sustainNote.mustPress) {
+			if (doubleChart_verboseOutput) {
+				debug('WARNING: Sustain lane mismatch at index ' + noteIndex + ' - expected lane ' + thisBaseLane + ', head is lane ' + headLane);
+			}
+			headNote = null;
+		}
+	}
+	
+	return headNote;
+}
+
+/**
+ * Processes a single note entry and adds it to the rebuild list.
+ * @param entry Process entry containing note index and toPlayer flag
+ * @param cachedNoteObjects Array of cached note objects
+ * @param sustainHeadPerLane Array tracking head notes per lane
+ * @param lastNoteOverall Reference to the last processed note overall
+ * @param rebuiltNotes Array to add processed notes to
+ * @param stats Statistics object to update
+ * @return Updated lastNoteOverall reference
+ */
+function processNoteEntry(entry:Dynamic, cachedNoteObjects:Array<Dynamic>, sustainHeadPerLane:Array<Dynamic>, lastNoteOverall:Dynamic, rebuiltNotes:Array<Dynamic>, stats:Dynamic):Dynamic {
+	var noteIndex:Int = entry.index;
+	
+	if (doubleChart_verboseOutput) {
+		debug('Processing note index: ' + noteIndex);
+	}
+	
+	var noteData = cachedNoteData[noteIndex];
+	var noteObj = cachedNoteObjects[noteIndex];
+
+	if (noteData == null || noteObj == null) {
+		debug('WARNING: Missing cached entry for index ' + noteIndex);
+		stats.skipped = stats.skipped + 1;
+		return lastNoteOverall;
+	}
+
+	var toPlayer:Bool = entry.toPlayer;
+	var originFromDad:Bool = !getOriginalMustPress(noteData);
+	prepareNoteForDoubleChart(noteObj, noteData, originFromDad, toPlayer);
+
+	var lane:Int = calculateNoteLane(noteData, toPlayer);
+	var previousNote:Dynamic = lastNoteOverall;
+
+	if (noteObj.isSustainNote) {
+		stats.sustains = stats.sustains + 1;
+		var headNote:Dynamic = findValidatedHeadNote(noteObj, noteData, lane, sustainHeadPerLane, previousNote, noteIndex);
+		
+		attachSustainToParent(noteObj, headNote);
+		if (previousNote == null && headNote != null) {
+			previousNote = headNote;
+		}
+		linkPrevNext(previousNote, noteObj);
+		noteObj.tail = [];
+	} else {
+		stats.heads = stats.heads + 1;
+		noteObj.parent = null;
+		noteObj.tail = [];
+		linkPrevNext(previousNote, noteObj);
+		sustainHeadPerLane[lane] = noteObj;
+	}
+
+	noteData.prevNote = noteObj.prevNote;
+	noteData.parent = noteObj.parent;
+
+	rebuiltNotes.push(noteObj);
+	stats.processed = stats.processed + 1;
+	
+	if (doubleChart_verboseOutput) {
+		debug('Successfully processed note ' + stats.processed);
+	}
+
+	return noteObj; // Return as new lastNoteOverall
+}
+
+/**
+ * Processes all notes in the process list and rebuilds them.
+ * @param processList Sorted list of note entries to process
+ * @param cachedNoteObjects Array of cached note objects
+ * @return Object containing rebuiltNotes array and processing statistics
+ */
+function processNotesList(processList:Array<Dynamic>, cachedNoteObjects:Array<Dynamic>):Dynamic {
 	var rebuiltNotes:Array<Dynamic> = [];
 	var sustainHeadPerLane:Array<Dynamic> = [null, null, null, null, null, null, null, null];
 	var lastNoteOverall:Dynamic = null;
-	var processedCount:Int = 0;
+	var stats:Dynamic = {
+		processed: 0,
+		skipped: 0,
+		heads: 0,
+		sustains: 0
+	};
 
 	for (entry in processList) {
-		var noteIndex:Int = entry.index;
 		try {
-			debug('Processing note index: ' + noteIndex);
-			var noteData = cachedNoteData[noteIndex];
-			var noteObj = cachedNoteObjects[noteIndex];
-
-			if (noteData == null || noteObj == null) {
-				debug('WARNING: Missing cached entry for index ' + noteIndex);
-				continue;
-			}
-
-			var toPlayer:Bool = entry.toPlayer;
-			var originFromDad:Bool = !getOriginalMustPress(noteData);
-			prepareNoteForDoubleChart(noteObj, noteData, originFromDad, toPlayer);
-
-			var lane:Int = noteData.noteData % 4;
-			if (lane < 0)
-				lane += 4;
-			if (!toPlayer)
-				lane = lane + 4;
-
-			var previousNote:Dynamic = lastNoteOverall;
-
-			if (noteObj.isSustainNote) {
-				var headNote:Dynamic = sustainHeadPerLane[lane];
-				if (headNote == null && previousNote != null && !previousNote.isSustainNote) {
-					headNote = previousNote;
-				}
-				attachSustainToParent(noteObj, headNote);
-				if (previousNote == null && headNote != null) {
-					previousNote = headNote;
-				}
-				linkPrevNext(previousNote, noteObj);
-				noteObj.tail = [];
-			} else {
-				noteObj.parent = null;
-				noteObj.tail = [];
-				linkPrevNext(previousNote, noteObj);
-				sustainHeadPerLane[lane] = noteObj;
-			}
-
-			lastNoteOverall = noteObj;
-
-			noteData.prevNote = noteObj.prevNote;
-			noteData.parent = noteObj.parent;
-
-			rebuiltNotes.push(noteObj);
-
-			processedCount = processedCount + 1;
-			debug('Successfully processed note ' + processedCount + '/' + totalSelected);
+			lastNoteOverall = processNoteEntry(entry, cachedNoteObjects, sustainHeadPerLane, lastNoteOverall, rebuiltNotes, stats);
 		} catch (e:Dynamic) {
-			debug('ERROR processing note index ' + noteIndex + ': ' + e);
+			debug('ERROR processing note index ' + entry.index + ': ' + e);
+			stats.skipped = stats.skipped + 1;
 		}
 	}
 
+	return {
+		notes: rebuiltNotes,
+		stats: stats
+	};
+}
+
+/**
+ * Sorts rebuilt notes by strum time and note data.
+ * @param rebuiltNotes Array of rebuilt note objects
+ */
+function sortRebuiltNotes(rebuiltNotes:Array<Dynamic>) {
 	rebuiltNotes.sort(function(a, b) {
 		if (a == null || b == null)
 			return 0;
@@ -714,13 +932,84 @@ function rebuildChartFromCache() {
 			return 1;
 		return 0;
 	});
+}
 
+/**
+ * Rebuilds the chart from the Note Cache System based on the current double chart mode and type.
+ * This is the main function that implements the double chart logic.
+ */
+function rebuildChartFromCache() {
+	// Get the cached note data from Note Cache System
+	cachedNoteData = getVar('noteCacher_noteDataCache');
+	var cachedNoteObjects:Array<Dynamic> = getVar('noteCacher_totalCachedNotes');
+
+	if (cachedNoteData == null || cachedNoteData.length == 0) {
+		debug('ERROR: Note Cache System data not available!');
+		return;
+	}
+
+	if (cachedNoteObjects == null || cachedNoteObjects.length == 0) {
+		debug('ERROR: Note Cache System object cache not available!');
+		return;
+	}
+
+	debug('Retrieved ' + cachedNoteData.length + ' cached notes');
+
+	// Build lookups and groupings
+	var sustainLookup:Array<Array<Int>> = buildSustainIndexLookup(cachedNoteData, cachedNoteObjects);
+	var sectionBoundaries:Array<Dynamic> = buildSectionBoundaries();
+	var baseNoteSectionMap:Array<Int> = mapBaseNotesToSections(cachedNoteData);
+	var notesBySection:Array<Array<Dynamic>> = groupNotesBySection(cachedNoteData, sectionBoundaries, baseNoteSectionMap);
+
+	// Count original notes and filter by sections
+	var originalCounts:Dynamic = countOriginalNotes(cachedNoteData);
+	var filterResult:Dynamic = filterNotesBySections(notesBySection, sustainLookup);
+	
+	var playerNoteIndices:Array<Int> = filterResult.playerIndices;
+	var opponentNoteIndices:Array<Int> = filterResult.opponentIndices;
+	var sectionsWithBorrowedNotes:Int = filterResult.borrowedSections;
+
+	// Sort indices
+	sortNoteIndices(playerNoteIndices, cachedNoteData);
+	sortNoteIndices(opponentNoteIndices, cachedNoteData);
+
+	var totalSelected:Int = playerNoteIndices.length + opponentNoteIndices.length;
+	
+	// Print filtering results
+	debug('=== Filtering results ===');
+	debug('Before: ' + originalCounts.player + ' player notes, ' + originalCounts.opponent + ' opponent notes');
+	debug('After: ' + playerNoteIndices.length + ' player notes, ' + opponentNoteIndices.length + ' opponent notes');
+	debug('Sections with borrowed notes: ' + sectionsWithBorrowedNotes + '/' + notesBySection.length);
+
+	if (totalSelected == 0) {
+		debug('ERROR: No notes selected for rebuild!');
+		return;
+	}
+
+	// Process notes
+	game.notes.clear();
+	debug('=== Rebuild Process ===');
+	debug('Starting rebuild pass for ' + totalSelected + ' notes...');
+
+	var processList:Array<Dynamic> = createProcessList(playerNoteIndices, opponentNoteIndices, cachedNoteData);
+	var processResult:Dynamic = processNotesList(processList, cachedNoteObjects);
+	var rebuiltNotes:Array<Dynamic> = processResult.notes;
+	var stats:Dynamic = processResult.stats;
+
+	// Sort and finalize
+	sortRebuiltNotes(rebuiltNotes);
 	game.unspawnNotes = rebuiltNotes.copy();
-
 	updateCacheBuckets(playerNoteIndices, opponentNoteIndices, cachedNoteObjects);
 
-	debug('Finished rebuilding chart - prepared ' + rebuiltNotes.length + ' notes');
-	debug('unspawnNotes currently holds ' + game.unspawnNotes.length + ' notes');
+	// Print rebuild statistics
+	debug('=== Rebuild Statistics ===');
+	debug('Total notes processed: ' + stats.processed + '/' + totalSelected);
+	debug('Head notes processed: ' + stats.heads);
+	debug('Sustain notes processed: ' + stats.sustains);
+	if (stats.skipped > 0) {
+		debug('Notes skipped/errored: ' + stats.skipped, FlxColor.RED);
+	}
+	debug('Final unspawnNotes queue count: ' + game.unspawnNotes.length);
 }
 
 /**
@@ -750,7 +1039,7 @@ function determineMustHitBfSideFromCache(notesInSection:Array<Dynamic>):Bool {
 		}
 	}
 
-	if (debug_showNoteAssignment) {
+	if (doubleChart_verboseOutput) {
 		debug('Section analysis -> Player notes: ' + bfNoteAmount + ', Opponent notes: ' + dadNoteAmount);
 	}
 
@@ -758,14 +1047,14 @@ function determineMustHitBfSideFromCache(notesInSection:Array<Dynamic>):Bool {
 		case 'Player':
 			// Force BF side whenever he has notes; only borrow opponent when BF is empty
 			var result:Bool = bfNoteAmount > 0;
-			if (debug_showNoteAssignment) {
+			if (doubleChart_verboseOutput) {
 				debug('Player mode decision: mustHitBfSide = ' + result);
 			}
 			return result;
 		case 'Opponent':
 			// Use Dad side if Dad has notes, otherwise use BF side
 			var oppResult:Bool = dadNoteAmount == 0;
-			if (debug_showNoteAssignment) {
+			if (doubleChart_verboseOutput) {
 				debug('Opponent mode decision: mustHitBfSide = ' + oppResult);
 			}
 			return oppResult;
@@ -777,7 +1066,7 @@ function determineMustHitBfSideFromCache(notesInSection:Array<Dynamic>):Bool {
 			} else if (dadNoteAmount > bfNoteAmount) {
 				densityResult = false;
 			}
-			if (debug_showNoteAssignment) {
+			if (doubleChart_verboseOutput) {
 				debug('Density mode decision: mustHitBfSide = ' + densityResult);
 			}
 			return densityResult;
@@ -794,7 +1083,8 @@ function determineMustHitBfSideFromCache(notesInSection:Array<Dynamic>):Bool {
  */
 function shouldNoteBePlayable(noteData:Dynamic, mustHitBfSide:Bool):Bool {
 	if (doubleChartType == 'Unmodified') {
-		return noteData.mustPress;
+		// In Unmodified mode, player plays ALL notes from both sides (for fun!)
+		return true;
 	}
 
 	var originalMustPress:Bool = getOriginalMustPress(noteData);
@@ -848,6 +1138,9 @@ function repositionNoteForDoubleChart(note:Dynamic, isPlayer:Bool) {
 // ========================================
 
 function onCreate() {
+	// Load settings from settings.json if available
+	loadSettings();
+	
 	debug('Double Chart System initialized');
 	debug('Mode: ' + doubleChartType);
 
@@ -871,7 +1164,8 @@ function onCreatePost() {
 
 	if (noteCacheEnabled) {
 		// Use cache system to rebuild chart
-		debug('Building double chart from Note Cache System...');
+		debug('=== Preparations ===');
+		debug('Preparing to rebuild chart using Note Cache System...');
 		rebuildChartFromCache();
 	} else {
 		debug('ERROR: Note Cache System is required! Please enable Note Cache System.hx');
@@ -895,18 +1189,17 @@ function goodNoteHit(note:Dynamic) {
 	if (note == null)
 		return;
 
-	var char:Dynamic = game.boyfriend;
+	// Determine which character originally owned this note
+	var originalChar:Dynamic = noteCameFromDad(note) ? game.dad : game.boyfriend;
+	
+	// Handle GF notes
 	if (note.gfNote && game.gf != null) {
-		char = game.gf;
+		originalChar = game.gf;
 	}
 
-	if (noteCameFromDad(note)) {
-		char = game.dad;
-	}
-
-	if (char == game.dad) {
-		playCharacterSingAnimation(game.dad, note);
-	}
+	// Play animation for the character that originally owned this note
+	// (even if it's being hit by the "player" side)
+	playCharacterSingAnimation(originalChar, note);
 }
 
 function opponentNoteHit(note:Dynamic) {
@@ -915,12 +1208,17 @@ function opponentNoteHit(note:Dynamic) {
 	if (note == null)
 		return;
 
-	var opponentChar:Dynamic = game.dad;
-	if (noteCameFromDad(note)) {
-		opponentChar = game.boyfriend;
+	// Determine which character originally owned this note
+	var originalChar:Dynamic = noteCameFromDad(note) ? game.dad : game.boyfriend;
+	
+	// Handle GF notes
+	if (note.gfNote && game.gf != null) {
+		originalChar = game.gf;
 	}
 
-	playCharacterSingAnimation(opponentChar, note);
+	// Play animation for the character that originally owned this note
+	// (even if it's being hit by the "opponent" side)
+	playCharacterSingAnimation(originalChar, note);
 }
 
 function noteMiss(note:Dynamic) {
@@ -929,16 +1227,14 @@ function noteMiss(note:Dynamic) {
 	if (note == null)
 		return;
 
-	var char:Dynamic = game.boyfriend;
+	// Determine which character originally owned this note
+	var originalChar:Dynamic = noteCameFromDad(note) ? game.dad : game.boyfriend;
+	
+	// Handle GF notes
 	if (note.gfNote && game.gf != null) {
-		char = game.gf;
+		originalChar = game.gf;
 	}
 
-	if (noteCameFromDad(note)) {
-		char = game.dad;
-	}
-
-	if (char == game.dad) {
-		playCharacterMissAnimation(game.dad, note);
-	}
+	// Play miss animation for the character that originally owned this note
+	playCharacterMissAnimation(originalChar, note);
 }

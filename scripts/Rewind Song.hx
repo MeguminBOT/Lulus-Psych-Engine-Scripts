@@ -12,6 +12,9 @@
 		- Prune old stats to save memory
 		- Configurable input settings (keyboard/gamepad)
 		- Smooth camera transition after rewind
+		- Settings.json support (when using "Lulu's Feature Pack")
+			- Configure settings through the mod settings menu
+			- Settings from settings.json will override the default values in the script
 
 		To do:
 		- Optimizations
@@ -25,6 +28,9 @@ import Reflect;
 // ========================================
 // VARIABLES
 // ========================================
+// --- Enable/Disable ---
+var rewindEnabled:Bool = true; // Master toggle for rewind system
+
 // --- Input Settings ---
 var useGamepad:Bool = false; // Set to true to use gamepad input instead of keyboard
 var gamepadID:Int = 0; // Gamepad ID to use when useGamepad is true
@@ -45,25 +51,193 @@ var statsRestoreTolerance:Float = 2000; // Max time difference for stat restorat
 var tempCameraSpeed:Float = 2; // Temporary camera speed after rewind for faster transition
 var cameraResetDelay:Float = 0.1; // Delay before resetting camera speed
 
+// --- Countdown Settings ---
+var useCountdown:Bool = true; // Enable countdown before rewind starts
+var countdownDuration:Float = 3.0; // Duration of countdown in seconds (e.g., 3.0 = "3... 2... 1...")
+var countdownTextSize:Int = 72; // Size of countdown text
+var countdownColor:String = 'FFFFFF'; // Color of countdown text (hex without #)
+
 // --- Trackers ---
 var maxTimelineEntries:Int = 1000; // Max number of stat entries to keep in memory. Used by pruning system.
 var statTimeline:Array<Dynamic> = []; // Buffer of recorded stats *DO NOT MODIFY*
 var lastSectionForRewind:Int = -1; // Track last section *DO NOT MODIFY*
+var countdownActive:Bool = false; // Is countdown currently running? *DO NOT MODIFY*
+var countdownTimer:Float = 0; // Current countdown timer *DO NOT MODIFY*
+var pendingRewindTime:Float = 0; // Time to rewind to after countdown finishes *DO NOT MODIFY*
+var countdownText:FlxText = null; // Text object for countdown display *DO NOT MODIFY*
+
+// ========================================
+// SETTINGS LOADER
+// ========================================
+
+/**
+ * Loads settings from settings.json using getModSetting if available.
+ * Settings from settings.json will override the default values above.
+ */
+function loadSettings() {
+	// Check if settings.json exists
+	var settingsPath:String = 'data/settings.json';
+	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
+		trace('[Rewind] settings.json not found, using default values from script');
+		return;
+	}
+	
+	trace('[Rewind] settings.json found, loading settings...');
+	trace('[Rewind] Attempting to load settings from mod folder');
+	
+	// Try to load each setting from settings.json
+	var settingValue:Dynamic = null;
+	
+	// Load rewindEnabled setting
+	settingValue = getModSetting('rewind_enabled');
+	trace('[Rewind] getModSetting(rewind_enabled) returned: ' + settingValue + ' (type: ' + Type.typeof(settingValue) + ')');
+	if (settingValue != null) {
+		rewindEnabled = settingValue;
+		trace('[Rewind] Loaded rewindEnabled from settings: ' + rewindEnabled);
+	} else {
+		trace('[Rewind] WARNING: rewind_enabled setting returned null, using default: ' + rewindEnabled);
+	}
+	
+	// Load useGamepad setting
+	settingValue = getModSetting('rewind_useGamepad');
+	if (settingValue != null) {
+		useGamepad = settingValue;
+	}
+	
+	// Load gamepadID setting
+	settingValue = getModSetting('rewind_gamepadID');
+	if (settingValue != null) {
+		gamepadID = settingValue;
+	}
+	
+	// Load rewindButton setting
+	settingValue = getModSetting('rewind_button');
+	if (settingValue != null) {
+		// Keybind type returns an object with 'keyboard' and 'gamepad' properties
+		if (Reflect.hasField(settingValue, 'keyboard')) {
+			rewindButton = settingValue.keyboard;
+			trace('[Rewind] Loaded rewindButton from settings: ' + rewindButton);
+		} else {
+			rewindButton = settingValue; // Fallback if it's just a string
+			trace('[Rewind] Loaded rewindButton (string) from settings: ' + rewindButton);
+		}
+	}
+	
+	// Load useSpecificTime setting
+	settingValue = getModSetting('rewind_useSpecificTime');
+	if (settingValue != null) {
+		useSpecificTime = settingValue;
+	}
+	
+	// Load specificTime setting
+	settingValue = getModSetting('rewind_specificTime');
+	if (settingValue != null) {
+		specificTime = settingValue;
+	}
+	
+	// Load relativeTime setting
+	settingValue = getModSetting('rewind_relativeTime');
+	if (settingValue != null) {
+		relativeTime = settingValue;
+	}
+	
+	// Load restoreStatsOnRewind setting
+	settingValue = getModSetting('rewind_restoreStats');
+	if (settingValue != null) {
+		restoreStatsOnRewind = settingValue;
+	}
+	
+	// Load enableStatPruning setting
+	settingValue = getModSetting('rewind_enablePruning');
+	if (settingValue != null) {
+		enableStatPruning = settingValue;
+	}
+	
+	// Load tempCameraSpeed setting
+	settingValue = getModSetting('rewind_cameraSpeed');
+	if (settingValue != null) {
+		tempCameraSpeed = settingValue;
+	}
+	
+	// Load useCountdown setting
+	settingValue = getModSetting('rewind_useCountdown');
+	if (settingValue != null) {
+		useCountdown = settingValue;
+		trace('[Rewind] Loaded useCountdown from settings: ' + useCountdown);
+	}
+	
+	// Load countdownDuration setting
+	settingValue = getModSetting('rewind_countdownDuration');
+	if (settingValue != null) {
+		countdownDuration = settingValue;
+		trace('[Rewind] Loaded countdownDuration from settings: ' + countdownDuration);
+	}
+	
+	trace('[Rewind] Settings load complete. rewindEnabled=' + rewindEnabled + ', useCountdown=' + useCountdown);
+}
 
 // ========================================
 // PSYCH FUNCTIONS
 // ========================================
+
+function onCreate() {
+	// Load settings from settings.json if available
+	loadSettings();
+}
+
+
 function onUpdate(elapsed:Float) {
+	// Handle countdown timer
+	if (countdownActive && countdownText != null) {
+		countdownTimer -= elapsed;
+		
+		// Update countdown text
+		var countdownNumber:Int = Math.ceil(countdownTimer);
+		if (countdownNumber > 0) {
+			countdownText.text = Std.string(countdownNumber);
+		} else {
+			countdownText.text = 'GO!';
+		}
+		
+		// Resume song when countdown finishes
+		if (countdownTimer <= 0) {
+			countdownActive = false;
+			
+			// Hide countdown text (don't destroy it so it can be reused)
+			if (countdownText != null) {
+				countdownText.visible = false;
+			}
+			
+			// Resume the song after countdown
+			if (FlxG.sound.music != null && !FlxG.sound.music.playing) {
+				FlxG.sound.music.play();
+			}
+			if (game.vocals != null && !game.vocals.playing) {
+				game.vocals.play();
+			}
+			if (game.opponentVocals != null && !game.opponentVocals.playing) {
+				game.opponentVocals.play();
+			}
+		}
+		return; // Don't check for new rewind input while countdown is active
+	}
+	
 	// Check for rewind input
-	if (checkRewindInput()) {
+	if (rewindEnabled && checkRewindInput()) {
 		var targetTime:Float = useSpecificTime ? specificTime : Math.max(0, Conductor.songPosition - relativeTime);
-		goToTime(targetTime);
+		
+		// Start countdown if enabled, otherwise rewind immediately
+		if (useCountdown) {
+			startCountdown(targetTime);
+		} else {
+			goToTime(targetTime);
+		}
 	}
 }
 
 function onUpdatePost(elapsed:Float) {
 	// Record stats every frame for restoration
-	if (restoreStatsOnRewind && Conductor.songPosition > 0) {
+	if (rewindEnabled && restoreStatsOnRewind && Conductor.songPosition > 0) {
 		recordCurrentStats();
 		if (enableStatPruning) {
 			pruneOldStats();
@@ -74,6 +248,43 @@ function onUpdatePost(elapsed:Float) {
 // ========================================
 // CUSTOM FUNCTIONS
 // ========================================
+/**
+ * Starts countdown after rewinding.
+ * @param targetTime Time to rewind to before countdown starts
+ */
+function startCountdown(targetTime:Float):Void {
+	// Execute rewind first
+	goToTime(targetTime);
+	
+	// Pause the song after rewinding
+	if (FlxG.sound.music != null) {
+		FlxG.sound.music.pause();
+	}
+	if (game.vocals != null) {
+		game.vocals.pause();
+	}
+	if (game.opponentVocals != null) {
+		game.opponentVocals.pause();
+	}
+	
+	// Set up countdown state
+	countdownActive = true;
+	countdownTimer = countdownDuration;
+	
+	// Create or reuse countdown text
+	if (countdownText == null) {
+		countdownText = new FlxText(0, 0, FlxG.width, Std.string(Math.ceil(countdownDuration)));
+		countdownText.setFormat(Paths.font('vcr.ttf'), countdownTextSize, FlxColor.fromString('#' + countdownColor), 'center');
+		countdownText.screenCenter();
+		countdownText.cameras = [game.camOther];
+		game.add(countdownText);
+	} else {
+		// Reuse existing text object
+		countdownText.text = Std.string(Math.ceil(countdownDuration));
+		countdownText.visible = true;
+	}
+}
+
 /**
  * Records current game stats to timeline buffer.
  */
@@ -251,7 +462,7 @@ function goToTime(time:Float) {
 				script.call('respawnNotesInRange', [time, currentTime]);
 				break;
 			} else {
-				debugPrint('Note Cache System script is required for this rewind script to function.');
+				trace('Note Cache System script is required for this rewind script to function.');
 			}
 		}
 	}

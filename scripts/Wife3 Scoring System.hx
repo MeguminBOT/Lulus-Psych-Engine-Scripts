@@ -12,6 +12,9 @@
 			- *Optional* Timing feedback display showing hit accuracy in milliseconds.
 			- *Optional* Kade Engine style score text formatting.
 			- *Optional* Etterna style FC Tiers.
+			- Settings.json support (when using "Lulu's Feature Pack")
+				- Configure settings through the mod settings menu
+				- Settings from settings.json will override the default values in the script
 
 		Place this script in 'mods/YourMod/scripts/' or 'mods/scripts/'.
 
@@ -56,6 +59,94 @@ var wife3_perfectHits = 0; // <= 45ms * judge scale
 var wife3_greatHits = 0; // <= 90ms * judge scale
 var wife3_goodHits = 0; // <= 135ms * judge scale
 var wife3_badHits = 0; // <= 180ms * judge scale
+
+// ========================================
+// SETTINGS LOADER
+// ========================================
+
+/**
+ * Loads settings from settings.json using getModSetting if available.
+ * Settings from settings.json will override the default values above.
+ */
+function loadSettings() {
+	// Check if settings.json exists
+	var settingsPath:String = 'data/settings.json';
+	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
+		trace('[Wife3] settings.json not found, using default values from script');
+		return;
+	}
+	
+	trace('[Wife3] settings.json found, loading settings...');
+	
+	// Try to load each setting from settings.json
+	var settingValue:Dynamic = null;
+	
+	// Load wife3_enabled setting
+	settingValue = getModSetting('wife3_enabled');
+	if (settingValue != null) {
+		wife3_enabled = settingValue;
+		debug('Loaded wife3_enabled from settings: ' + wife3_enabled);
+	}
+	
+	// Load wife3_debug setting
+	settingValue = getModSetting('wife3_debug');
+	if (settingValue != null) {
+		wife3_debug = settingValue;
+		debug('Loaded wife3_debug from settings: ' + wife3_debug);
+	}
+	
+	// Load wife3_showTimingDisplay setting
+	settingValue = getModSetting('wife3_showTimingDisplay');
+	if (settingValue != null) {
+		wife3_showTimingDisplay = settingValue;
+		debug('Loaded wife3_showTimingDisplay from settings: ' + wife3_showTimingDisplay);
+	}
+	
+	// Load wife3_replaceScoreText setting
+	settingValue = getModSetting('wife3_replaceScoreText');
+	if (settingValue != null) {
+		wife3_replaceScoreText = settingValue;
+		debug('Loaded wife3_replaceScoreText from settings: ' + wife3_replaceScoreText);
+	}
+	
+	// Load wife3_kadeEngineStyle setting
+	settingValue = getModSetting('wife3_kadeEngineStyle');
+	if (settingValue != null) {
+		wife3_kadeEngineStyle = settingValue;
+		debug('Loaded wife3_kadeEngineStyle from settings: ' + wife3_kadeEngineStyle);
+	}
+	
+	// Load wife3_useEtternaFCTiers setting
+	settingValue = getModSetting('wife3_useEtternaFCTiers');
+	if (settingValue != null) {
+		wife3_useEtternaFCTiers = settingValue;
+		debug('Loaded wife3_useEtternaFCTiers from settings: ' + wife3_useEtternaFCTiers);
+	}
+	
+	// Load wife3_judgePreset setting and convert to judge scale
+	settingValue = getModSetting('wife3_judgePreset');
+	if (settingValue != null) {
+		var judgePreset:Int = Std.int(settingValue);
+		if (judgePreset >= 1 && judgePreset <= 9) {
+			wife3_judge_scale = JUDGE_WINDOWS[judgePreset - 1];
+			debug('Loaded wife3_judgePreset from settings: J' + judgePreset + ' (scale: ' + wife3_judge_scale + ')');
+		} else {
+			debug('Invalid judge preset: ' + judgePreset + ', using default J4');
+		}
+	}
+	
+	// Load wife3_judgeScale setting (overrides preset if set)
+	settingValue = getModSetting('wife3_judgeScale');
+	if (settingValue != null) {
+		var customScale:Float = settingValue;
+		if (customScale >= 0.009 && customScale <= 4.0) {
+			wife3_judge_scale = customScale;
+			debug('Loaded wife3_judgeScale from settings: ' + wife3_judge_scale + ' (overrides preset)');
+		} else {
+			debug('Invalid judge scale: ' + customScale + ', must be between 0.009 and 4.0');
+		}
+	}
+}
 
 function registerCallbacks() {
 	createGlobalCallback('wife3_getAccuracy', wife3_getAccuracy);
@@ -691,6 +782,9 @@ function wife3_updateScoreText() {
 // ========================================
 
 function onCreate() {
+	// Load settings from settings.json if available
+	loadSettings();
+	
 	registerCallbacks();
 	debug('Wife3 functions registered - accessible from other scripts');
 	debug('Wife3 Scoring System Initialized');
