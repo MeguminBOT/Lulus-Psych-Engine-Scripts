@@ -24,12 +24,12 @@ My collection of scripts I've written to make modding easier or just for fun.
 
 | Script | Language | Version | Enable Script Variable? | Requires Additional Assets? | Works standalone? |
 |--------|----------|---------|------------------------|----------------------------|------------------|
-| [Temporarily Disable Anti-Alias](scripts/Temporarily%20Disable%20Anti-Alias.lua) | Lua | 0.6.x - 1.0.x | Yes | No | Yes |
-| [Half-Life 2 Style UI](scripts/Half-Life%202%20UI.lua) | Lua | 0.6.x - 1.0.x | Yes | Yes (Requires Fonts folder) | No |
-| [Half-Life 2 Style Fake Loading Screen](scripts/Half-Life%202%20Loading%20Screen.lua) | Lua | 0.6.x - 1.0.x | Yes | Yes (Requires Images folder) | No |
+| [Temporarily Disable Anti-Alias](scripts/Temporarily%20Disable%20Anti-Alias.lua) | Lua | 0.6.x - 1.0.x | Yes (Disabled by default) | No | Yes |
+| [Half-Life 2 Style UI](scripts/Half-Life%202%20UI.lua) | Lua | 0.6.x - 1.0.x | Yes (Disabled by default) | Yes (Requires Fonts folder) | No |
+| [Half-Life 2 Style Fake Loading Screen](scripts/Half-Life%202%20Loading%20Screen.lua) | Lua | 0.6.x - 1.0.x | Yes (Disabled by default) | Yes (Requires Images folder) | No |
 | [Video Manager](scripts/Video%20Manager.hx) | HScript | 1.0+ | No | No | Yes |
-| [Wife3 Scoring System](scripts/Wife3%20Scoring%20System.hx) | HScript | 1.0+ | No (Enabled by default) | No | Yes |
-| [Note Cache System](scripts/Note%20Cache%20System.hx) | HScript | 1.0+ | Yes (Disabled by default) | No | No |
+| [Wife3 Scoring System](scripts/Wife3%20Scoring%20System.hx) | HScript | 1.0+ | Yes (Enabled by default) | No | Yes |
+| [Note Cache System](scripts/Note%20Cache%20System.hx) | HScript | 1.0+ | Yes (Enabled by default) | No | No |
 | [Rewind Song](scripts/Rewind%20Song.hx) | HScript | 1.0+ | No | Yes (Requires Note Cache System) | No |
 | [Play Both Charts System](scripts/Play%20Both%20Chart%20System.hx) | HScript | 1.0+ | Yes (Disabled by default) | Yes (Requires Note Cache System) | No |
 | [Lane Underlay](scripts/Lane%20Underlay.hx) | HScript | 1.0+ | Yes (Enabled by default) | No | No |
