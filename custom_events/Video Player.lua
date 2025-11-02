@@ -357,6 +357,7 @@ function onEvent(name, value1, value2)
             startVideo(videoName, canSkip)
         else
             startVideo(videoName)
+            setProperty('inCutscene', false)
         end
 
         setVideoCamera(camera)
