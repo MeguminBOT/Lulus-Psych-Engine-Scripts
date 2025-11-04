@@ -21,14 +21,15 @@
 		- Find a better solution for MusicBeatSubstate fuckery
 
 	Script by AutisticLulu.
-*/
+ */
 
 import Reflect;
 
 // ========================================
-// VARIABLES
+// CONFIGURATION & VARIABLES
 // ========================================
-// --- Enable/Disable ---
+
+// --- General Settings ---
 var rewindEnabled:Bool = true; // Master toggle for rewind system
 
 // --- Input Settings ---
@@ -46,6 +47,7 @@ var restoreStatsOnRewind:Bool = true; // true = restore stats from target time, 
 var enableStatPruning:Bool = false; // false = prune old stats to save memory, false = keep all stats.
 var pruneInterval:Float = 10000; // Interval to prune old stats from timeline (in ms) *Requires some tinkering*
 var statsRestoreTolerance:Float = 2000; // Max time difference for stat restoration (in ms) *Requires some tinkering*
+var maxTimelineEntries:Int = 1000; // Max number of stat entries to keep in memory. Used by pruning system *Requires some tinkering*
 
 // --- Camera Settings ---
 var tempCameraSpeed:Float = 2; // Temporary camera speed after rewind for faster transition
@@ -57,14 +59,13 @@ var countdownDuration:Float = 3.0; // Duration of countdown in seconds (e.g., 3.
 var countdownTextSize:Int = 72; // Size of countdown text
 var countdownColor:String = 'FFFFFF'; // Color of countdown text (hex without #)
 
-// --- Trackers ---
-var maxTimelineEntries:Int = 1000; // Max number of stat entries to keep in memory. Used by pruning system.
-var statTimeline:Array<Dynamic> = []; // Buffer of recorded stats *DO NOT MODIFY*
-var lastSectionForRewind:Int = -1; // Track last section *DO NOT MODIFY*
-var countdownActive:Bool = false; // Is countdown currently running? *DO NOT MODIFY*
-var countdownTimer:Float = 0; // Current countdown timer *DO NOT MODIFY*
-var pendingRewindTime:Float = 0; // Time to rewind to after countdown finishes *DO NOT MODIFY*
-var countdownText:FlxText = null; // Text object for countdown display *DO NOT MODIFY*
+// --- Internal Variables (DO NOT MODIFY) ---
+var statTimeline:Array<Dynamic> = []; // Buffer of recorded stats
+var lastSectionForRewind:Int = -1; // Track last section
+var countdownActive:Bool = false; // Is countdown currently running?
+var countdownTimer:Float = 0; // Current countdown timer
+var pendingRewindTime:Float = 0; // Time to rewind to after countdown finishes
+var countdownText:FlxText = null; // Text object for countdown display
 
 // ========================================
 // SETTINGS LOADER
@@ -75,179 +76,61 @@ var countdownText:FlxText = null; // Text object for countdown display *DO NOT M
  * Settings from settings.json will override the default values above.
  */
 function loadSettings() {
-	// Check if settings.json exists
 	var settingsPath:String = 'data/settings.json';
 	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
-		trace('[Rewind] settings.json not found, using default values from script');
+		trace('[Rewind Song] settings.json not found, using default values from script');
 		return;
 	}
-	
-	trace('[Rewind] settings.json found, loading settings...');
-	trace('[Rewind] Attempting to load settings from mod folder');
-	
-	// Try to load each setting from settings.json
-	var settingValue:Dynamic = null;
-	
-	// Load rewindEnabled setting
-	settingValue = getModSetting('rewind_enabled');
-	trace('[Rewind] getModSetting(rewind_enabled) returned: ' + settingValue + ' (type: ' + Type.typeof(settingValue) + ')');
-	if (settingValue != null) {
-		rewindEnabled = settingValue;
-		trace('[Rewind] Loaded rewindEnabled from settings: ' + rewindEnabled);
-	} else {
-		trace('[Rewind] WARNING: rewind_enabled setting returned null, using default: ' + rewindEnabled);
-	}
-	
-	// Load useGamepad setting
-	settingValue = getModSetting('rewind_useGamepad');
-	if (settingValue != null) {
-		useGamepad = settingValue;
-	}
-	
-	// Load gamepadID setting
-	settingValue = getModSetting('rewind_gamepadID');
-	if (settingValue != null) {
-		gamepadID = settingValue;
-	}
-	
-	// Load rewindButton setting
-	settingValue = getModSetting('rewind_button');
-	if (settingValue != null) {
-		// Keybind type returns an object with 'keyboard' and 'gamepad' properties
-		if (Reflect.hasField(settingValue, 'keyboard')) {
-			rewindButton = settingValue.keyboard;
-			trace('[Rewind] Loaded rewindButton from settings: ' + rewindButton);
+	trace('[Rewind Song] settings.json found, loading settings...');
+
+	var value:Dynamic;
+
+	if ((value = getModSetting('rewind_enabled')) != null)
+		rewindEnabled = value;
+
+	if ((value = getModSetting('rewind_useGamepad')) != null)
+		useGamepad = value;
+
+	if ((value = getModSetting('rewind_gamepadID')) != null)
+		gamepadID = value;
+
+	if ((value = getModSetting('rewind_button')) != null) {
+		if (Reflect.hasField(value, 'keyboard')) {
+			rewindButton = value.keyboard;
 		} else {
-			rewindButton = settingValue; // Fallback if it's just a string
-			trace('[Rewind] Loaded rewindButton (string) from settings: ' + rewindButton);
+			rewindButton = value;
 		}
 	}
-	
-	// Load useSpecificTime setting
-	settingValue = getModSetting('rewind_useSpecificTime');
-	if (settingValue != null) {
-		useSpecificTime = settingValue;
-	}
-	
-	// Load specificTime setting
-	settingValue = getModSetting('rewind_specificTime');
-	if (settingValue != null) {
-		specificTime = settingValue;
-	}
-	
-	// Load relativeTime setting
-	settingValue = getModSetting('rewind_relativeTime');
-	if (settingValue != null) {
-		relativeTime = settingValue;
-	}
-	
-	// Load restoreStatsOnRewind setting
-	settingValue = getModSetting('rewind_restoreStats');
-	if (settingValue != null) {
-		restoreStatsOnRewind = settingValue;
-	}
-	
-	// Load enableStatPruning setting
-	settingValue = getModSetting('rewind_enablePruning');
-	if (settingValue != null) {
-		enableStatPruning = settingValue;
-	}
-	
-	// Load tempCameraSpeed setting
-	settingValue = getModSetting('rewind_cameraSpeed');
-	if (settingValue != null) {
-		tempCameraSpeed = settingValue;
-	}
-	
-	// Load useCountdown setting
-	settingValue = getModSetting('rewind_useCountdown');
-	if (settingValue != null) {
-		useCountdown = settingValue;
-		trace('[Rewind] Loaded useCountdown from settings: ' + useCountdown);
-	}
-	
-	// Load countdownDuration setting
-	settingValue = getModSetting('rewind_countdownDuration');
-	if (settingValue != null) {
-		countdownDuration = settingValue;
-		trace('[Rewind] Loaded countdownDuration from settings: ' + countdownDuration);
-	}
-	
-	trace('[Rewind] Settings load complete. rewindEnabled=' + rewindEnabled + ', useCountdown=' + useCountdown);
-}
 
-// ========================================
-// PSYCH FUNCTIONS
-// ========================================
+	if ((value = getModSetting('rewind_useSpecificTime')) != null)
+		useSpecificTime = value;
 
-function onCreate() {
-	// Load settings from settings.json if available
-	loadSettings();
-}
+	if ((value = getModSetting('rewind_specificTime')) != null)
+		specificTime = value;
 
+	if ((value = getModSetting('rewind_relativeTime')) != null)
+		relativeTime = value;
 
-function onUpdate(elapsed:Float) {
-	// Handle countdown timer
-	if (countdownActive && countdownText != null) {
-		countdownTimer -= elapsed;
-		
-		// Update countdown text
-		var countdownNumber:Int = Math.ceil(countdownTimer);
-		if (countdownNumber > 0) {
-			countdownText.text = Std.string(countdownNumber);
-		} else {
-			countdownText.text = 'GO!';
-		}
-		
-		// Resume song when countdown finishes
-		if (countdownTimer <= 0) {
-			countdownActive = false;
-			
-			// Hide countdown text (don't destroy it so it can be reused)
-			if (countdownText != null) {
-				countdownText.visible = false;
-			}
-			
-			// Resume the song after countdown
-			if (FlxG.sound.music != null && !FlxG.sound.music.playing) {
-				FlxG.sound.music.play();
-			}
-			if (game.vocals != null && !game.vocals.playing) {
-				game.vocals.play();
-			}
-			if (game.opponentVocals != null && !game.opponentVocals.playing) {
-				game.opponentVocals.play();
-			}
-		}
-		return; // Don't check for new rewind input while countdown is active
-	}
-	
-	// Check for rewind input
-	if (rewindEnabled && checkRewindInput()) {
-		var targetTime:Float = useSpecificTime ? specificTime : Math.max(0, Conductor.songPosition - relativeTime);
-		
-		// Start countdown if enabled, otherwise rewind immediately
-		if (useCountdown) {
-			startCountdown(targetTime);
-		} else {
-			goToTime(targetTime);
-		}
-	}
-}
+	if ((value = getModSetting('rewind_restoreStats')) != null)
+		restoreStatsOnRewind = value;
 
-function onUpdatePost(elapsed:Float) {
-	// Record stats every frame for restoration
-	if (rewindEnabled && restoreStatsOnRewind && Conductor.songPosition > 0) {
-		recordCurrentStats();
-		if (enableStatPruning) {
-			pruneOldStats();
-		}
-	}
+	if ((value = getModSetting('rewind_enablePruning')) != null)
+		enableStatPruning = value;
+
+	if ((value = getModSetting('rewind_cameraSpeed')) != null)
+		tempCameraSpeed = value;
+
+	if ((value = getModSetting('rewind_useCountdown')) != null)
+		useCountdown = value;
+
+	if ((value = getModSetting('rewind_countdownDuration')) != null)
+		countdownDuration = value;
 }
 
 // ========================================
 // CUSTOM FUNCTIONS
 // ========================================
+
 /**
  * Starts countdown after rewinding.
  * @param targetTime Time to rewind to before countdown starts
@@ -255,7 +138,7 @@ function onUpdatePost(elapsed:Float) {
 function startCountdown(targetTime:Float):Void {
 	// Execute rewind first
 	goToTime(targetTime);
-	
+
 	// Pause the song after rewinding
 	if (FlxG.sound.music != null) {
 		FlxG.sound.music.pause();
@@ -266,11 +149,11 @@ function startCountdown(targetTime:Float):Void {
 	if (game.opponentVocals != null) {
 		game.opponentVocals.pause();
 	}
-	
+
 	// Set up countdown state
 	countdownActive = true;
 	countdownTimer = countdownDuration;
-	
+
 	// Create or reuse countdown text
 	if (countdownText == null) {
 		countdownText = new FlxText(0, 0, FlxG.width, Std.string(Math.ceil(countdownDuration)));
@@ -359,10 +242,12 @@ function recalcSectionState(curStep:Int, curDecStep:Float):Void {
 
 	for (i in 0...totalSections) {
 		var section:Dynamic = notes[i];
-		if (section == null) continue;
+		if (section == null)
+			continue;
 
 		var sectionBeats:Float = section.sectionBeats;
-		if (sectionBeats == null || sectionBeats <= 0) sectionBeats = 4;
+		if (sectionBeats == null || sectionBeats <= 0)
+			sectionBeats = 4;
 
 		cumulativeSteps += Math.round(sectionBeats * 4);
 
@@ -384,7 +269,8 @@ function recalcSectionState(curStep:Int, curDecStep:Float):Void {
 		var sectionData:Dynamic = notes[targetSection];
 		if (sectionData != null) {
 			beatsAhead = sectionData.sectionBeats;
-			if (beatsAhead == null || beatsAhead <= 0) beatsAhead = 4;
+			if (beatsAhead == null || beatsAhead <= 0)
+				beatsAhead = 4;
 		}
 		cumulativeSteps = curStep + Math.round(beatsAhead * 4);
 	}
@@ -398,7 +284,8 @@ function recalcSectionState(curStep:Int, curDecStep:Float):Void {
  * @return Stats object or null if not found within tolerance
  */
 function findClosestStats(targetTime:Float):Dynamic {
-	if (statTimeline.length == 0) return null;
+	if (statTimeline.length == 0)
+		return null;
 
 	var closestEntry:Dynamic = null;
 	var closestDiff:Float = Math.POSITIVE_INFINITY;
@@ -500,8 +387,10 @@ function goToTime(time:Float) {
 	// Restore stats when rewinding backwards (if enabled)
 	if (time < currentTime && restoreStatsOnRewind) {
 		var statsToRestore:Dynamic = findClosestStats(time);
-		trace("Stats restoration: " + (statsToRestore != null ? "Found stats at time " + statsToRestore.time + " (diff: " + Math.abs(statsToRestore.time - time) + "ms)" : "No stats found within tolerance"));
-		
+		trace("Stats restoration: "
+			+ (statsToRestore != null ? "Found stats at time " + statsToRestore.time + " (diff: " + Math.abs(statsToRestore.time - time) +
+				"ms)" : "No stats found within tolerance"));
+
 		if (statsToRestore != null) {
 			applyStats(statsToRestore);
 		} else {
@@ -543,8 +432,76 @@ function goToTime(time:Float) {
 	// These variables prevent duplicate curStep/curBeat hits and blocks certain updates from happening.
 	Reflect.setField(game, 'lastStepHit', curStep - 1);
 	Reflect.setField(game, 'lastBeatHit', curBeat - 1);
-	
+
 	// IMPORTANT: Reset our section tracker so we can detect section changes after rewind
 	// This enables automatic camera switching as the song progresses
 	lastSectionForRewind = curSectionIndex - 1;
+}
+
+// ========================================
+// PSYCH FUNCTIONS
+// ========================================
+
+function onCreate() {
+	// Load settings from settings.json if available
+	loadSettings();
+}
+
+function onUpdate(elapsed:Float) {
+	// Handle countdown timer
+	if (countdownActive && countdownText != null) {
+		countdownTimer -= elapsed;
+
+		// Update countdown text
+		var countdownNumber:Int = Math.ceil(countdownTimer);
+		if (countdownNumber > 0) {
+			countdownText.text = Std.string(countdownNumber);
+		} else {
+			countdownText.text = 'GO!';
+		}
+
+		// Resume song when countdown finishes
+		if (countdownTimer <= 0) {
+			countdownActive = false;
+
+			// Hide countdown text (don't destroy it so it can be reused)
+			if (countdownText != null) {
+				countdownText.visible = false;
+			}
+
+			// Resume the song after countdown
+			if (FlxG.sound.music != null && !FlxG.sound.music.playing) {
+				FlxG.sound.music.play();
+			}
+			if (game.vocals != null && !game.vocals.playing) {
+				game.vocals.play();
+			}
+			if (game.opponentVocals != null && !game.opponentVocals.playing) {
+				game.opponentVocals.play();
+			}
+		}
+		return; // Don't check for new rewind input while countdown is active
+	}
+
+	// Check for rewind input
+	if (rewindEnabled && checkRewindInput()) {
+		var targetTime:Float = useSpecificTime ? specificTime : Math.max(0, Conductor.songPosition - relativeTime);
+
+		// Start countdown if enabled, otherwise rewind immediately
+		if (useCountdown) {
+			startCountdown(targetTime);
+		} else {
+			goToTime(targetTime);
+		}
+	}
+}
+
+function onUpdatePost(elapsed:Float) {
+	// Record stats every frame for restoration
+	if (rewindEnabled && restoreStatsOnRewind && Conductor.songPosition > 0) {
+		recordCurrentStats();
+		if (enableStatPruning) {
+			pruneOldStats();
+		}
+	}
 }

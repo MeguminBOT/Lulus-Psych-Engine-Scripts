@@ -22,11 +22,12 @@
 		https://github.com/MeguminBOT/Lulus-Psych-Engine-Scripts/wiki/Wife3-Scoring-System.hx
 
 	Script by AutisticLulu.
-*/
+ */
 
 // ========================================
-// VARIABLES AND CONSTANTS
+// CONFIGURATION & VARIABLES
 // ========================================
+
 // --- General Settings ---
 var wife3_enabled = true;
 var wife3_debug = false;
@@ -69,64 +70,35 @@ var wife3_badHits = 0; // <= 180ms * judge scale
  * Settings from settings.json will override the default values above.
  */
 function loadSettings() {
-	// Check if settings.json exists
 	var settingsPath:String = 'data/settings.json';
 	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
 		trace('[Wife3] settings.json not found, using default values from script');
 		return;
 	}
-	
 	trace('[Wife3] settings.json found, loading settings...');
-	
-	// Try to load each setting from settings.json
-	var settingValue:Dynamic = null;
-	
-	// Load wife3_enabled setting
-	settingValue = getModSetting('wife3_enabled');
-	if (settingValue != null) {
-		wife3_enabled = settingValue;
-		debug('Loaded wife3_enabled from settings: ' + wife3_enabled);
-	}
-	
-	// Load wife3_debug setting
-	settingValue = getModSetting('wife3_debug');
-	if (settingValue != null) {
-		wife3_debug = settingValue;
-		debug('Loaded wife3_debug from settings: ' + wife3_debug);
-	}
-	
-	// Load wife3_showTimingDisplay setting
-	settingValue = getModSetting('wife3_showTimingDisplay');
-	if (settingValue != null) {
-		wife3_showTimingDisplay = settingValue;
-		debug('Loaded wife3_showTimingDisplay from settings: ' + wife3_showTimingDisplay);
-	}
-	
-	// Load wife3_replaceScoreText setting
-	settingValue = getModSetting('wife3_replaceScoreText');
-	if (settingValue != null) {
-		wife3_replaceScoreText = settingValue;
-		debug('Loaded wife3_replaceScoreText from settings: ' + wife3_replaceScoreText);
-	}
-	
-	// Load wife3_kadeEngineStyle setting
-	settingValue = getModSetting('wife3_kadeEngineStyle');
-	if (settingValue != null) {
-		wife3_kadeEngineStyle = settingValue;
-		debug('Loaded wife3_kadeEngineStyle from settings: ' + wife3_kadeEngineStyle);
-	}
-	
-	// Load wife3_useEtternaFCTiers setting
-	settingValue = getModSetting('wife3_useEtternaFCTiers');
-	if (settingValue != null) {
-		wife3_useEtternaFCTiers = settingValue;
-		debug('Loaded wife3_useEtternaFCTiers from settings: ' + wife3_useEtternaFCTiers);
-	}
-	
-	// Load wife3_judgePreset setting and convert to judge scale
-	settingValue = getModSetting('wife3_judgePreset');
-	if (settingValue != null) {
-		var judgePreset:Int = Std.int(settingValue);
+
+	var value:Dynamic;
+
+	if ((value = getModSetting('wife3_enabled')) != null)
+		wife3_enabled = value;
+
+	if ((value = getModSetting('wife3_debug')) != null)
+		wife3_debug = value;
+
+	if ((value = getModSetting('wife3_showTimingDisplay')) != null)
+		wife3_showTimingDisplay = value;
+
+	if ((value = getModSetting('wife3_replaceScoreText')) != null)
+		wife3_replaceScoreText = value;
+
+	if ((value = getModSetting('wife3_kadeEngineStyle')) != null)
+		wife3_kadeEngineStyle = value;
+
+	if ((value = getModSetting('wife3_useEtternaFCTiers')) != null)
+		wife3_useEtternaFCTiers = value;
+
+	if ((value = getModSetting('wife3_judgePreset')) != null) {
+		var judgePreset:Int = Std.int(value);
 		if (judgePreset >= 1 && judgePreset <= 9) {
 			wife3_judge_scale = JUDGE_WINDOWS[judgePreset - 1];
 			debug('Loaded wife3_judgePreset from settings: J' + judgePreset + ' (scale: ' + wife3_judge_scale + ')');
@@ -134,11 +106,9 @@ function loadSettings() {
 			debug('Invalid judge preset: ' + judgePreset + ', using default J4');
 		}
 	}
-	
-	// Load wife3_judgeScale setting (overrides preset if set)
-	settingValue = getModSetting('wife3_judgeScale');
-	if (settingValue != null) {
-		var customScale:Float = settingValue;
+
+	if ((value = getModSetting('wife3_judgeScale')) != null) {
+		var customScale:Float = value;
 		if (customScale >= 0.009 && customScale <= 4.0) {
 			wife3_judge_scale = customScale;
 			debug('Loaded wife3_judgeScale from settings: ' + wife3_judge_scale + ' (overrides preset)');
@@ -146,62 +116,6 @@ function loadSettings() {
 			debug('Invalid judge scale: ' + customScale + ', must be between 0.009 and 4.0');
 		}
 	}
-}
-
-function registerCallbacks() {
-	createGlobalCallback('wife3_getAccuracy', wife3_getAccuracy);
-	createGlobalCallback('wife3_getScore', wife3_getScore);
-	createGlobalCallback('wife3_getGrade', wife3_getGrade);
-	createGlobalCallback('wife3_getJudgeScale', wife3_getJudgeScale);
-	createGlobalCallback('wife3_getJudgePreset', wife3_getJudgePreset);
-	createGlobalCallback('wife3_getMarvelousHits', wife3_getMarvelousHits);
-	createGlobalCallback('wife3_getPerfectHits', wife3_getPerfectHits);
-	createGlobalCallback('wife3_getGreatHits', wife3_getGreatHits);
-	createGlobalCallback('wife3_getGoodHits', wife3_getGoodHits);
-	createGlobalCallback('wife3_getBadHits', wife3_getBadHits);
-	createGlobalCallback('wife3_formatPercent', wife3_formatPercent);
-	createGlobalCallback('wife3_getRatingFC', wife3_getRatingFC);
-	createGlobalCallback('wife3_getTimingWindow', wife3_getTimingWindow);
-	createGlobalCallback('wife3_setEnabled', wife3_setEnabled);
-	createGlobalCallback('wife3_setJudgeScale', wife3_setJudgeScale);
-	createGlobalCallback('wife3_setJudgePreset', wife3_setJudgePreset);
-	createGlobalCallback('wife3_resetAccuracy', wife3_resetAccuracy);
-	createGlobalCallback('wife3_setReplaceScoreText', wife3_setReplaceScoreText);
-	createGlobalCallback('wife3_getReplaceScoreText', wife3_getReplaceScoreText);
-	createGlobalCallback('wife3_updateScoreText', wife3_updateScoreText);
-	createGlobalCallback('wife3_setShowTimingDisplay', wife3_setShowTimingDisplay);
-	createGlobalCallback('wife3_getShowTimingDisplay', wife3_getShowTimingDisplay);
-	createGlobalCallback('wife3_setKadeEngineStyle', wife3_setKadeEngineStyle);
-	createGlobalCallback('wife3_getKadeEngineStyle', wife3_getKadeEngineStyle);
-	createGlobalCallback('wife3_setUseEtternaFCTiers', wife3_setUseEtternaFCTiers);
-	createGlobalCallback('wife3_getUseEtternaFCTiers', wife3_getUseEtternaFCTiers);
-
-	setVar('wife3_getAccuracy', wife3_getAccuracy);
-	setVar('wife3_getScore', wife3_getScore);
-	setVar('wife3_getGrade', wife3_getGrade);
-	setVar('wife3_getJudgeScale', wife3_getJudgeScale);
-	setVar('wife3_getJudgePreset', wife3_getJudgePreset);
-	setVar('wife3_getMarvelousHits', wife3_getMarvelousHits);
-	setVar('wife3_getPerfectHits', wife3_getPerfectHits);
-	setVar('wife3_getGreatHits', wife3_getGreatHits);
-	setVar('wife3_getGoodHits', wife3_getGoodHits);
-	setVar('wife3_getBadHits', wife3_getBadHits);
-	setVar('wife3_formatPercent', wife3_formatPercent);
-	setVar('wife3_getRatingFC', wife3_getRatingFC);
-	setVar('wife3_getTimingWindow', wife3_getTimingWindow);
-	setVar('wife3_setEnabled', wife3_setEnabled);
-	setVar('wife3_setJudgeScale', wife3_setJudgeScale);
-	setVar('wife3_setJudgePreset', wife3_setJudgePreset);
-	setVar('wife3_resetAccuracy', wife3_resetAccuracy);
-	setVar('wife3_setReplaceScoreText', wife3_setReplaceScoreText);
-	setVar('wife3_getReplaceScoreText', wife3_getReplaceScoreText);
-	setVar('wife3_updateScoreText', wife3_updateScoreText);
-	setVar('wife3_setShowTimingDisplay', wife3_setShowTimingDisplay);
-	setVar('wife3_getShowTimingDisplay', wife3_getShowTimingDisplay);
-	setVar('wife3_setKadeEngineStyle', wife3_setKadeEngineStyle);
-	setVar('wife3_getKadeEngineStyle', wife3_getKadeEngineStyle);
-	setVar('wife3_setUseEtternaFCTiers', wife3_setUseEtternaFCTiers);
-	setVar('wife3_getUseEtternaFCTiers', wife3_getUseEtternaFCTiers);
 }
 
 // ========================================
@@ -765,26 +679,80 @@ function wife3_updateScoreText() {
 		var grade = wife3_getGrade(accuracy);
 		var ratingFC = wife3_getRatingFC();
 
-		scoreText = wife3_kadeEngineStyle
-			? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC + ') ' + grade
-			: 'Score: ' + score + ' | Misses: ' + misses + ' | Rating: ' + grade + ' (' + formattedPercent + '%) - ' + ratingFC;
+		scoreText = wife3_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC
+			+ ') ' + grade : 'Score: '
+			+ score
+			+ ' | Misses: '
+			+ misses
+			+ ' | Rating: '
+			+ grade
+			+ ' ('
+			+ formattedPercent
+			+ '%) - '
+			+ ratingFC;
 	} else {
-		scoreText = wife3_kadeEngineStyle
-			? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ?'
-			: 'Score: ' + score + ' | Misses: ' + misses + ' | Rating: ?';
+		scoreText = wife3_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ?' : 'Score: '
+			+ score
+			+ ' | Misses: '
+			+ misses
+			+ ' | Rating: ?';
 	}
 
 	game.scoreTxt.text = scoreText;
 }
 
 // ========================================
-// EVENT HANDLERS
+// CALLBACK REGISTRATION
+// ========================================
+
+/**
+ * Registers all note caching functions as global callbacks.
+ * Makes these functions accessible from other scripts via setVar() and createGlobalCallback().
+ */
+function registerCallbacks() {
+	var callbacks:Array<Dynamic> = [
+		['wife3_getAccuracy', wife3_getAccuracy],
+		['wife3_getScore', wife3_getScore],
+		['wife3_getGrade', wife3_getGrade],
+		['wife3_getJudgeScale', wife3_getJudgeScale],
+		['wife3_getJudgePreset', wife3_getJudgePreset],
+		['wife3_getMarvelousHits', wife3_getMarvelousHits],
+		['wife3_getPerfectHits', wife3_getPerfectHits],
+		['wife3_getGreatHits', wife3_getGreatHits],
+		['wife3_getGoodHits', wife3_getGoodHits],
+		['wife3_getBadHits', wife3_getBadHits],
+		['wife3_formatPercent', wife3_formatPercent],
+		['wife3_getRatingFC', wife3_getRatingFC],
+		['wife3_getTimingWindow', wife3_getTimingWindow],
+		['wife3_setEnabled', wife3_setEnabled],
+		['wife3_setJudgeScale', wife3_setJudgeScale],
+		['wife3_setJudgePreset', wife3_setJudgePreset],
+		['wife3_resetAccuracy', wife3_resetAccuracy],
+		['wife3_setReplaceScoreText', wife3_setReplaceScoreText],
+		['wife3_getReplaceScoreText', wife3_getReplaceScoreText],
+		['wife3_updateScoreText', wife3_updateScoreText],
+		['wife3_setShowTimingDisplay', wife3_setShowTimingDisplay],
+		['wife3_getShowTimingDisplay', wife3_getShowTimingDisplay],
+		['wife3_setKadeEngineStyle', wife3_setKadeEngineStyle],
+		['wife3_getKadeEngineStyle', wife3_getKadeEngineStyle],
+		['wife3_setUseEtternaFCTiers', wife3_setUseEtternaFCTiers],
+		['wife3_getUseEtternaFCTiers', wife3_getUseEtternaFCTiers]
+	];
+
+	for (callback in callbacks) {
+		createGlobalCallback(callback[0], callback[1]);
+		setVar(callback[0], callback[1]);
+	}
+}
+
+// ========================================
+// PSYCH FUNCTIONS
 // ========================================
 
 function onCreate() {
 	// Load settings from settings.json if available
 	loadSettings();
-	
+
 	registerCallbacks();
 	debug('Wife3 functions registered - accessible from other scripts');
 	debug('Wife3 Scoring System Initialized');
@@ -817,7 +785,8 @@ function onUpdateScore(miss:Bool) {
 }
 
 function goodNoteHit(note:Note) {
-	if (!wife3_enabled || note.isSustainNote || !note.mustPress) return;
+	if (!wife3_enabled || note.isSustainNote || !note.mustPress)
+		return;
 
 	// Calculate timing offset
 	var noteDiff = note.strumTime - Conductor.songPosition;

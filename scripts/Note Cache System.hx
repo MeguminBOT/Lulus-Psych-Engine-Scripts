@@ -5,62 +5,29 @@
 		Place this script in 'mods/YourMod/scripts/' or 'mods/scripts/'.
 
 	Script by AutisticLulu.
-*/
+ */
 
 // ========================================
-// VARIABLES AND CONSTANTS
+// CONFIGURATION & VARIABLES
 // ========================================
+
 // --- General Settings ---
-
 var noteCache_enabled:Bool = true;
+
+// --- Debug Settings ---
 var noteCache_debug:Bool = true;
 var noteCache_useTrace:Bool = true;
 var noteCache_useDebugPrint:Bool = false;
 
-// -- STORAGE (DO NOT MODIFY) --
+// --- Internal Variables (DO NOT MODIFY) ---
 var cachedNotes:Array<Dynamic> = [];
 var cachedPlayerNotes:Array<Dynamic> = [];
 var cachedOpponentNotes:Array<Dynamic> = [];
 var noteDataCache:Array<Dynamic> = [];
 var replacementLookup:Array<Dynamic> = [];
 
-function registerCallbacks() {
-	setVar('noteCacher_respawnNote', respawnNote);
-	setVar('noteCacher_respawnNoteAtTime', respawnNoteAtTime);
-	setVar('noteCacher_respawnNotesInRange', respawnNotesInRange);
-	setVar('noteCacher_clearNotesInRange', clearNotesInRange);
-	setVar('noteCacher_getTotalNoteCount', getTotalNoteCount);
-	setVar('noteCacher_getNoteAtTime', getNoteAtTime);
-	setVar('noteCacher_getNotesInRange', getNotesInRange);
-	setVar('noteCacher_getNotesByColumn', getNotesByColumn);
-	setVar('noteCacher_getNotesByType', getNotesByType);
-	setVar('noteCacher_getCachedNoteData', getCachedNoteData);
-	setVar('noteCacher_findNoteDataByTime', findNoteDataByTime);
-	setVar('noteCacher_printNoteInfo', printNoteInfo);
-
-
-	setVar('noteCacher_totalCachedNotes', cachedNotes);
-	setVar('noteCacher_totalPlayerNotes', cachedPlayerNotes);
-	setVar('noteCacher_totalOpponentNotes', cachedOpponentNotes);
-	setVar('noteCacher_noteDataCache', noteDataCache);
-	setVar('noteCacher_replacementLookup', replacementLookup);
-
-	createGlobalCallback('noteCacher_respawnNote', respawnNote);
-	createGlobalCallback('noteCacher_respawnNoteAtTime', respawnNoteAtTime);
-	createGlobalCallback('noteCacher_respawnNotesInRange', respawnNotesInRange);
-	createGlobalCallback('noteCacher_clearNotesInRange', clearNotesInRange);
-	createGlobalCallback('noteCacher_getTotalNoteCount', getTotalNoteCount);
-	createGlobalCallback('noteCacher_getNoteAtTime', getNoteAtTime);
-	createGlobalCallback('noteCacher_getNotesInRange', getNotesInRange);
-	createGlobalCallback('noteCacher_getNotesByColumn', getNotesByColumn);
-	createGlobalCallback('noteCacher_getNotesByType', getNotesByType);
-	createGlobalCallback('noteCacher_getCachedNoteData', getCachedNoteData);
-	createGlobalCallback('noteCacher_findNoteDataByTime', findNoteDataByTime);
-	createGlobalCallback('noteCacher_printNoteInfo', printNoteInfo);
-}
-
 // ========================================
-// DEBUG HELPER
+// DEBUG HELPERS
 // ========================================
 
 /**
@@ -84,56 +51,80 @@ function debug(message:String, ?color:FlxColor = null) {
 	}
 }
 
+/**
+ * Debug helper that logs core information about a note.
+ * @param note The note to inspect.
+ */
+function printNoteInfo(note:Dynamic) {
+	if (note == null) {
+		debug('Note is null!');
+		return;
+	}
+
+	debug('Note Info:');
+	debug('  Time: ' + note.strumTime + 'ms');
+	debug('  Column: ' + note.noteData);
+	debug('  Must Press: ' + note.mustPress);
+	debug('  Type: ' + note.noteType);
+	debug('  Is Sustain: ' + note.isSustainNote);
+	debug('  Sustain Length: ' + note.sustainLength);
+}
+
 // ========================================
-// CACHE FUNCTIONS
+// CACHE INFO GETTERS
 // ========================================
 
 /**
- * Caches all notes from the unspawn queue at song start.
- * Stores note objects and their data for later respawning.
+ * Returns how many notes were cached when the song was generated.
+ * @return Total note count.
  */
-function cacheNotes() {
-	if (game.unspawnNotes != null && game.unspawnNotes.length > 0) {
-		for (note in game.unspawnNotes) {
-			cachedNotes.push(note);
-
-			var noteData = {
-				strumTime: note.strumTime,
-				noteData: note.noteData,
-				mustPress: note.mustPress,
-				noteType: note.noteType,
-				isSustainNote: note.isSustainNote,
-				sustainLength: note.sustainLength,
-				prevNote: note.prevNote,
-				parent: note.parent,
-				hitByOpponent: note.hitByOpponent,
-				ignoreNote: note.ignoreNote,
-				hitHealth: note.hitHealth,
-				missHealth: note.missHealth,
-				rating: note.rating,
-				ratingMod: note.ratingMod,
-				texture: note.texture,
-				noAnimation: note.noAnimation,
-				noMissAnimation: note.noMissAnimation,
-				hitCausesMiss: note.hitCausesMiss,
-				distance: note.distance,
-				hitsoundDisabled: note.hitsoundDisabled,
-				gfNote: note.gfNote,
-				earlyHitMult: note.earlyHitMult,
-				lateHitMult: note.lateHitMult,
-				lowPriority: note.lowPriority
-			};
-
-			noteDataCache.push(noteData);
-
-			if (note.mustPress) {
-				cachedPlayerNotes.push(note);
-			} else {
-				cachedOpponentNotes.push(note);
-			}
-		}
-	}
+function getCachedNoteCount():Int {
+	return cachedNotes.length;
 }
+
+/**
+ * Returns the array of all cached notes.
+ * @return Array of all cached notes
+ */
+function getAllCachedNotes():Array<Dynamic> {
+	return cachedNotes;
+}
+
+/**
+ * Returns the array of cached player notes.
+ * @return Array of player notes
+ */
+function getAllPlayerNotes():Array<Dynamic> {
+	return cachedPlayerNotes;
+}
+
+/**
+ * Returns the array of cached opponent notes.
+ * @return Array of opponent notes
+ */
+function getAllOpponentNotes():Array<Dynamic> {
+	return cachedOpponentNotes;
+}
+
+/**
+ * Returns the array of cached note data.
+ * @return Array of note data objects
+ */
+function getNoteDataCache():Array<Dynamic> {
+	return noteDataCache;
+}
+
+/**
+ * Returns the replacement lookup array.
+ * @return Array of replacement entries
+ */
+function getReplacementLookup():Array<Dynamic> {
+	return replacementLookup;
+}
+
+// ========================================
+// NOTE QUERY FUNCTIONS
+// ========================================
 
 /**
  * Returns the cached note at an exact strum time, optionally filtering by side.
@@ -171,14 +162,6 @@ function getNotesInRange(startTime:Float, endTime:Float, ?mustPress:Bool = null)
 	}
 
 	return notesInRange;
-}
-
-/**
- * Returns how many notes were cached when the song was generated.
- * @return Total note count.
- */
-function getTotalNoteCount():Int {
-	return cachedNotes.length;
 }
 
 /**
@@ -237,7 +220,7 @@ function getCachedNoteData(index:Int):Dynamic {
  * @param mustPress Optional filter: true for player notes, false for opponent, null for both.
  * @return Array of matching cached data blobs.
  */
-function findNoteDataByTime(time:Float, ?mustPress:Bool = null):Array<Dynamic> {
+function getNoteDataByTime(time:Float, ?mustPress:Bool = null):Array<Dynamic> {
 	// Find cached note data at a specific time
 	var foundData:Array<Dynamic> = [];
 
@@ -252,24 +235,9 @@ function findNoteDataByTime(time:Float, ?mustPress:Bool = null):Array<Dynamic> {
 	return foundData;
 }
 
-/**
- * Debug helper that logs core information about a note.
- * @param note The note to inspect.
- */
-function printNoteInfo(note:Dynamic) {
-	if (note == null) {
-		debug('Note is null!');
-		return;
-	}
-
-	debug('Note Info:');
-	debug('  Time: ' + note.strumTime + 'ms');
-	debug('  Column: ' + note.noteData);
-	debug('  Must Press: ' + note.mustPress);
-	debug('  Type: ' + note.noteType);
-	debug('  Is Sustain: ' + note.isSustainNote);
-	debug('  Sustain Length: ' + note.sustainLength);
-}
+// ========================================
+// NOTE MANIPULATION FUNCTIONS
+// ========================================
 
 /**
  * Removes live and queued notes in the provided window prior to respawning.
@@ -313,6 +281,53 @@ function clearNotesInRange(startTime:Float, endTime:Float) {
 // ========================================
 // NOTE REBUILDER FUNCTIONS
 // ========================================
+
+/**
+ * Caches all notes from the unspawn queue at song start.
+ * Stores note objects and their data for later respawning.
+ */
+function cacheNotes() {
+	if (game.unspawnNotes != null && game.unspawnNotes.length > 0) {
+		for (note in game.unspawnNotes) {
+			cachedNotes.push(note);
+
+			var noteData = {
+				strumTime: note.strumTime,
+				noteData: note.noteData,
+				mustPress: note.mustPress,
+				noteType: note.noteType,
+				isSustainNote: note.isSustainNote,
+				sustainLength: note.sustainLength,
+				prevNote: note.prevNote,
+				parent: note.parent,
+				hitByOpponent: note.hitByOpponent,
+				ignoreNote: note.ignoreNote,
+				hitHealth: note.hitHealth,
+				missHealth: note.missHealth,
+				rating: note.rating,
+				ratingMod: note.ratingMod,
+				texture: note.texture,
+				noAnimation: note.noAnimation,
+				noMissAnimation: note.noMissAnimation,
+				hitCausesMiss: note.hitCausesMiss,
+				distance: note.distance,
+				hitsoundDisabled: note.hitsoundDisabled,
+				gfNote: note.gfNote,
+				earlyHitMult: note.earlyHitMult,
+				lateHitMult: note.lateHitMult,
+				lowPriority: note.lowPriority
+			};
+
+			noteDataCache.push(noteData);
+
+			if (note.mustPress) {
+				cachedPlayerNotes.push(note);
+			} else {
+				cachedOpponentNotes.push(note);
+			}
+		}
+	}
+}
 
 /**
  * Retrieves the replacement entry for a cached note from a pseudo-map array.
@@ -470,8 +485,7 @@ function updateParentChain(newNote:Dynamic, parentNote:Dynamic, ?startTime:Float
  * @param headPerColumn Array tracking the head note of each sustain chain.
  * @return The rebuilt note, or null if data is invalid.
  */
-function rebuildNote(index:Int, startTime:Float, endTime:Float, replacements:Array<Dynamic>, ?lastNotePerColumn:Array<Dynamic> = null,
-		?headPerColumn:Array<Dynamic> = null):Dynamic {
+function rebuildNote(index:Int, startTime:Float, endTime:Float, replacements:Array<Dynamic>, ?lastNotePerColumn:Array<Dynamic> = null, ?headPerColumn:Array<Dynamic> = null):Dynamic {
 	var data = noteDataCache[index];
 	var originalNote = cachedNotes[index];
 
@@ -763,6 +777,47 @@ function insertNoteIntoGame(note:Dynamic) {
 }
 
 // ========================================
+// CALLBACK REGISTRATION
+// ========================================
+
+/**
+ * Registers all note caching functions as global callbacks.
+ * Makes these functions accessible from other scripts via setVar() and createGlobalCallback().
+ */
+function registerCallbacks() {
+	var callbacks:Array<Dynamic> = [
+		// Debug functions
+		['noteCacher_printNoteInfo', printNoteInfo],
+		// Cache info getters
+		['noteCacher_getCachedNoteCount', getCachedNoteCount],
+		['noteCacher_getAllCachedNotes', getAllCachedNotes],
+		['noteCacher_getAllPlayerNotes', getAllPlayerNotes],
+		['noteCacher_getAllOpponentNotes', getAllOpponentNotes],
+		['noteCacher_getNoteDataCache', getNoteDataCache],
+		['noteCacher_getReplacementLookup', getReplacementLookup],
+		// Note query functions
+		['noteCacher_getNoteAtTime', getNoteAtTime],
+		['noteCacher_getNotesInRange', getNotesInRange],
+		['noteCacher_getNotesByColumn', getNotesByColumn],
+		['noteCacher_getNotesByType', getNotesByType],
+		['noteCacher_getCachedNoteData', getCachedNoteData],
+		['noteCacher_getNoteDataByTime', getNoteDataByTime],
+		// Note manipulation functions
+		['noteCacher_respawnNote', respawnNote],
+		['noteCacher_respawnNoteAtTime', respawnNoteAtTime],
+		['noteCacher_respawnNotesInRange', respawnNotesInRange],
+		['noteCacher_clearNotesInRange', clearNotesInRange]
+	];
+
+	for (callback in callbacks) {
+		setVar(callback[0], callback[1]);
+		createGlobalCallback(callback[0], callback[1]);
+	}
+
+	debug('Registered ' + callbacks.length + ' callbacks');
+}
+
+// ========================================
 // PSYCH FUNCTIONS
 // ========================================
 
@@ -776,7 +831,6 @@ function onCreatePost() {
 		debug('Cached ' + cachedNotes.length + ' total notes');
 		debug('' + cachedPlayerNotes.length + ' player notes');
 		debug('' + cachedOpponentNotes.length + ' opponent notes');
-
 	} else {
 		debug('No notes found to cache!');
 	}

@@ -22,8 +22,10 @@
  */
 
 // ========================================
-// CONFIGURATION VARIABLES
+// CONFIGURATION & VARIABLES
 // ========================================
+
+// --- General Settings ---
 var laneUnderlay_enabled:Bool = true;
 var laneUnderlay_showOpponentUnderlay:Bool = true;
 var laneUnderlay_alpha:Float = 0.35;
@@ -32,9 +34,7 @@ var laneUnderlay_extraWidth:Int = 50;
 var laneUnderlay_individualLanes:Bool = false;
 var laneUnderlay_strumMoveThreshold:Float = 0.1;
 
-// ========================================
-// INTERNAL VARIABLES (DO NOT MODIFY)
-// ========================================
+// --- Internal Variables (DO NOT MODIFY) ---
 var laneUnderlay:FlxSprite = null;
 var laneUnderlayOpponent:FlxSprite = null;
 var laneUnderlayColor:Int = FlxColor.BLACK;
@@ -52,49 +52,34 @@ var cachedOpponentStrumPositions:Array<Float> = [];
  * Settings from settings.json will override the default values above.
  */
 function loadSettings() {
-	// Check if settings.json exists
 	var settingsPath:String = 'data/settings.json';
 	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
 		trace('[Lane Underlay] settings.json not found, using default values from script');
 		return;
 	}
-
 	trace('[Lane Underlay] settings.json found, loading settings...');
 
-	var settingValue:Dynamic = null;
+	var value:Dynamic;
 
-	settingValue = getModSetting('laneUnderlay_enabled');
-	if (settingValue != null) {
-		laneUnderlay_enabled = settingValue;
-	}
+	if ((value = getModSetting('laneUnderlay_enabled')) != null)
+		laneUnderlay_enabled = value;
 
-	settingValue = getModSetting('laneUnderlay_showOpponentUnderlay');
-	if (settingValue != null) {
-		laneUnderlay_showOpponentUnderlay = settingValue;
-	}
+	if ((value = getModSetting('laneUnderlay_showOpponentUnderlay')) != null)
+		laneUnderlay_showOpponentUnderlay = value;
 
-	settingValue = getModSetting('laneUnderlay_individualLanes');
-	if (settingValue != null) {
-		laneUnderlay_individualLanes = settingValue;
-	}
+	if ((value = getModSetting('laneUnderlay_individualLanes')) != null)
+		laneUnderlay_individualLanes = value;
 
-	settingValue = getModSetting('laneUnderlay_alpha');
-	if (settingValue != null) {
-		laneUnderlay_alpha = Std.parseFloat(Std.string(settingValue));
-		laneUnderlay_alpha = FlxMath.bound(laneUnderlay_alpha, 0, 1);
-	}
+	if ((value = getModSetting('laneUnderlay_alpha')) != null)
+		laneUnderlay_alpha = FlxMath.bound(Std.parseFloat(Std.string(value)), 0, 1);
 
-	settingValue = getModSetting('laneUnderlay_color');
-	if (settingValue != null) {
-		laneUnderlay_colorSetting = Std.string(settingValue);
-	}
+	if ((value = getModSetting('laneUnderlay_color')) != null)
+		laneUnderlay_colorSetting = Std.string(value);
 
-	settingValue = getModSetting('laneUnderlay_width');
-	if (settingValue != null) {
-		var extraValue:Float = Std.parseFloat(Std.string(settingValue));
-		if (extraValue == extraValue) {
+	if ((value = getModSetting('laneUnderlay_width')) != null) {
+		var extraValue:Float = Std.parseFloat(Std.string(value));
+		if (extraValue == extraValue)
 			laneUnderlay_extraWidth = Std.int(FlxMath.bound(extraValue, 0, 200));
-		}
 	}
 }
 
