@@ -33,3 +33,4 @@ My collection of scripts I've written to make modding easier or just for fun.
 | [Rewind Song](scripts/Rewind%20Song.hx) | HScript | 1.0+ | No | Yes (Requires Note Cache System) | No |
 | [Play Both Charts System](scripts/Play%20Both%20Chart%20System.hx) | HScript | 1.0+ | Yes (Disabled by default) | Yes (Requires Note Cache System) | No |
 | [Lane Underlay](scripts/Lane%20Underlay.hx) | HScript | 1.0+ | Yes (Enabled by default) | No | No |
+| [Split Scroll](scripts/Split%20Scroll.hx) | HScript | 1.0+ | Yes (Disabled by default) | No | No |

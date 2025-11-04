@@ -25,7 +25,7 @@
 // ========================================
 
 // --- General Settings ---
-var splitScroll_enabled:Bool = true;
+var splitScroll_enabled:Bool = false;
 var splitScroll_invertDirection:Bool = false; // Inverts the scroll direction (left up/right down becomes left down/right up)
 
 // --- Internal Variables (DO NOT MODIFY) ---
