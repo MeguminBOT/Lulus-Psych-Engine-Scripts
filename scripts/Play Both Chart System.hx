@@ -528,28 +528,39 @@ function clearArray(array:Array<Dynamic>) {
  * @param cachedNoteObjects Array of cached note objects
  */
 function updateCacheBuckets(playerIndices:Array<Int>, opponentIndices:Array<Int>, cachedNoteObjects:Array<Dynamic>) {
-	var playerCache:Array<Dynamic> = getVar('noteCacher_totalPlayerNotes');
-	if (playerCache != null) {
-		clearArray(playerCache);
-		for (idx in playerIndices) {
-			var noteObj = cachedNoteObjects[idx];
-			if (noteObj != null)
-				playerCache.push(noteObj);
+	var getPlayerNotesCallback = getVar('noteCacher_getAllPlayerNotes');
+	if (getPlayerNotesCallback != null) {
+		var playerCache:Array<Dynamic> = getPlayerNotesCallback();
+		if (playerCache != null) {
+			clearArray(playerCache);
+			for (idx in playerIndices) {
+				var noteObj = cachedNoteObjects[idx];
+				if (noteObj != null)
+					playerCache.push(noteObj);
+			}
 		}
 	}
 
-	var opponentCache:Array<Dynamic> = getVar('noteCacher_totalOpponentNotes');
-	if (opponentCache != null) {
-		clearArray(opponentCache);
-		for (idx in opponentIndices) {
-			var oppNote = cachedNoteObjects[idx];
-			if (oppNote != null)
-				opponentCache.push(oppNote);
+	var getOpponentNotesCallback = getVar('noteCacher_getAllOpponentNotes');
+	if (getOpponentNotesCallback != null) {
+		var opponentCache:Array<Dynamic> = getOpponentNotesCallback();
+		if (opponentCache != null) {
+			clearArray(opponentCache);
+			for (idx in opponentIndices) {
+				var oppNote = cachedNoteObjects[idx];
+				if (oppNote != null)
+					opponentCache.push(oppNote);
+			}
 		}
 	}
 
-	var replacementLookup:Array<Dynamic> = getVar('noteCacher_replacementLookup');
-	clearArray(replacementLookup);
+	var getReplacementLookupCallback = getVar('noteCacher_getReplacementLookup');
+	if (getReplacementLookupCallback != null) {
+		var replacementLookup:Array<Dynamic> = getReplacementLookupCallback();
+		if (replacementLookup != null) {
+			clearArray(replacementLookup);
+		}
+	}
 }
 
 /**
@@ -920,9 +931,17 @@ function sortRebuiltNotes(rebuiltNotes:Array<Dynamic>) {
  * This is the main function that implements the double chart logic.
  */
 function rebuildChartFromCache() {
-	// Get the cached note data from Note Cache System
-	cachedNoteData = getVar('noteCacher_noteDataCache');
-	var cachedNoteObjects:Array<Dynamic> = getVar('noteCacher_totalCachedNotes');
+	// Get the cached note data from Note Cache System via callbacks
+	var getDataCallback = getVar('noteCacher_getNoteDataCache');
+	var getNotesCallback = getVar('noteCacher_getAllCachedNotes');
+
+	if (getDataCallback == null || getNotesCallback == null) {
+		debug('ERROR: Note Cache System callbacks not available!');
+		return;
+	}
+
+	cachedNoteData = getDataCallback();
+	var cachedNoteObjects:Array<Dynamic> = getNotesCallback();
 
 	if (cachedNoteData == null || cachedNoteData.length == 0) {
 		debug('ERROR: Note Cache System data not available!');
@@ -1124,32 +1143,28 @@ function onCreate() {
 
 	debug('Double Chart System initialized');
 	debug('Mode: ' + doubleChartType);
-
-	// Check if Note Cache System is available by searching hscript array
-	if (game.hscriptArray != null) {
-		for (script in game.hscriptArray) {
-			if (script != null && script.origin != null && script.origin.indexOf('Note Cache System') != -1) {
-				noteCacheEnabled = true;
-				debug('Note Cache System detected - using cache-based approach');
-				break;
-			} else {
-				debug('Note Cache System script is required for "Play Both Chart" script to function.');
-			}
-		}
-	}
 }
 
 function onCreatePost() {
 	if (!doubleChart)
 		return;
 
-	if (noteCacheEnabled) {
-		// Use cache system to rebuild chart
-		debug('=== Preparations ===');
-		debug('Preparing to rebuild chart using Note Cache System...');
-		rebuildChartFromCache();
+	// Use cache system to rebuild chart
+	var getCachedNotesCallback = getVar('noteCacher_getAllCachedNotes');
+	if (getCachedNotesCallback != null) {
+		var cachedNotes:Array<Dynamic> = getCachedNotesCallback();
+		if (cachedNotes != null && cachedNotes.length > 0) {
+			noteCacheEnabled = true;
+			debug('Note Cache System detected with ' + cachedNotes.length + ' cached notes');
+			rebuildChartFromCache();
+			debug('Double Chart functionality is enabled');
+		} else {
+			noteCacheEnabled = false;
+			debug('ERROR: Note Cache System data is empty!', FlxColor.RED);
+		}
 	} else {
-		debug('ERROR: Note Cache System is required! Please enable Note Cache System.hx');
+		noteCacheEnabled = false;
+		debug('ERROR: Note Cache System is required! Please enable Note Cache System.hx', FlxColor.RED);
 	}
 }
 
