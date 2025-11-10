@@ -1,0 +1,7 @@
+{
+	"name": "[Script] Lulu's Replay System",
+	"description": "Adds a replay system to Psych Engine, allowing you to record and playback your gameplay.",
+	"restart":false,
+	"runsGlobally": true,
+	"color": [170, 0, 255]
+}

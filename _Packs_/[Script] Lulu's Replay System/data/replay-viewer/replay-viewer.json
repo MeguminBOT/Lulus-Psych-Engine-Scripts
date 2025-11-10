@@ -1,0 +1,27 @@
+{
+	"sectionLengths": [],
+	"player1": "bf",
+	"events": [],
+	"gfVersion": "gf",
+	"player2": "dad",
+	"notes": [
+		{
+			"sectionBeats": 4,
+			"sectionNotes": [],
+			"typeOfSection": 0,
+			"altAnim": false,
+			"changeBPM": false,
+			"mustHitSection": true,
+			"bpm": 240
+		}
+	],
+	"player3": null,
+	"song": "Replay Viewer",
+	"stage": "replay-viewer",
+	"needsVoices": false,
+	"sections": 0,
+	"validScore": false,
+	"format": "psych_v1_convert",
+	"bpm": 240,
+	"speed": 1
+}

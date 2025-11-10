@@ -1,0 +1,15 @@
+{
+	"songs": [
+		["Replay Viewer", "replaysystem", [33, 33, 33]]
+	],
+	"difficulties": "Normal",
+	"storyName": "Replay Viewer",
+	"startUnlocked": true,
+	"hideStoryMode": true,
+	"hideFreeplay": false,
+	"freeplayColor": [33, 33, 33],
+	"weekBefore": "tutorial",
+	"weekName": "replay-viewer",
+	"weekBackground": "",
+	"weekCharacters": ["", "", ""]
+}
