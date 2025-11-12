@@ -55,6 +55,7 @@ import DateTools;
 // --- General Settings ---
 var replay_enabled:Bool = true;
 var replay_autoSaveReplays:Bool = true; // Auto-save replays (prompts once for name, then never asks again)
+var replay_saveOnGameOver:Bool = true; // Save replay when you die/game over
 var replay_useFancyJSON:Bool = true; // Use 'fancy' format for readable JSON at the cost of disk space.
 var replay_debug:Bool = false;
 
@@ -164,10 +165,9 @@ function createSprite(x:Float, y:Float, width:Int, height:Int, color:Int, alpha:
 // ========================================
 // RECORDING: CORE
 // ========================================
-// --- Recording State Variables ---
 var isRecording:Bool = false;
-var recordingStartTime:Float = 0;
 var replayData:Dynamic = null;
+var recordingStartTime:Float = 0;
 var noteHitRecordings:Array<Dynamic> = [];
 var inputEventRecordings:Array<Dynamic> = [];
 var songCompleted:Bool = false;
@@ -226,7 +226,19 @@ function startRecording() {
 		}
 	};
 
+	// Allow compatibility scripts to inject additional data
+	var additionalData = getVar('replayAdditionalData');
+	if (additionalData != null) {
+		for (field in Reflect.fields(additionalData)) {
+			var value = Reflect.field(additionalData, field);
+			Reflect.setField(replayData, field, value);
+			debug('Added ' + field + ' to replay data: ' + value);
+		}
+	}
+
 	debug('Recording started: ' + PlayState.SONG.song + ' (' + diffName + ')');
+	setVar('isRecording', isRecording);
+	setVar('replayData', replayData);
 }
 
 /**
@@ -262,6 +274,58 @@ function stopRecording() {
 	} else if (!isValidScore()) {
 		debug('Score not valid (practice/botplay/charting mode) - replay not saved');
 	}
+
+	setVar('isRecording', isRecording);
+	setVar('replayData', replayData);
+}
+
+/**
+ * Saves replay data when game over occurs.
+ * Finalizes recording and saves even though song wasn't completed.
+ */
+function saveReplayOnGameOver() {
+	if (!isRecording)
+		return;
+
+	debug('Game Over detected - finalizing replay');
+
+	isRecording = false;
+	replayData.noteHits = noteHitRecordings;
+	replayData.inputEvents = inputEventRecordings;
+
+	replayData.result = {
+		score: game.songScore,
+		misses: game.songMisses,
+		hits: game.songHits,
+		acc: game.ratingPercent * 100,
+		rating: game.ratingName,
+		sicks: game.ratingsData[0].hits,
+		goods: game.ratingsData[1].hits,
+		bads: game.ratingsData[2].hits,
+		shits: game.ratingsData[3].hits,
+		maxCombo: highestCombo,
+		died: true // Mark that this replay ended in game over
+	};
+
+	debug('Game Over replay - Note Hits: ' + noteHitRecordings.length + ' | Input Events: ' + inputEventRecordings.length);
+	debug('Score: ' + replayData.result.score + ' | Acc: ' + replayData.result.acc + '%');
+
+	// Check if we should save (skip practice/botplay/charting)
+	var practiceMode = ClientPrefs.getGameplaySetting('practice');
+	var botplay = ClientPrefs.getGameplaySetting('botplay');
+	var chartingMode = PlayState.chartingMode;
+
+	if (practiceMode || botplay || chartingMode) {
+		debug('Game Over replay not saved (practice/botplay/charting mode)');
+	} else if (replay_autoSaveReplays) {
+		savedReplayFilename = saveReplay(replayData);
+		if (savedReplayFilename != null) {
+			debug('Game Over replay auto-saved: ' + savedReplayFilename);
+		}
+	}
+
+	setVar('isRecording', isRecording);
+	setVar('replayData', replayData);
 }
 
 /**
@@ -382,7 +446,6 @@ function generateFilename(folderPath:String, replay:Dynamic):String {
 // ========================================
 // RECORDING: SAVE PROMPT UI
 // ========================================
-// --- Save Prompt State Variables ---
 var savePromptActive:Bool = false;
 var savePromptCompleted:Bool = false;
 var savePromptInputText:String = '';
@@ -597,7 +660,6 @@ function closeSaveInterface() {
 // ========================================
 // PLAYBACK: CORE
 // ========================================
-// --- Playback State Variables ---
 var isPlayingReplay:Bool = false;
 var currentReplay:Dynamic = null;
 var noteHitIndex:Int = 0;
@@ -605,8 +667,9 @@ var playbackStartTime:Float = 0;
 var isHittingNoteFromReplay:Bool = false;
 var useInputEventPlayback:Bool = false;
 var inputEventIndex:Int = 0;
-var simulatedControls:Array<Bool> = [false, false, false, false];
-var prevControls:Array<Bool> = [false, false, false, false];
+var simulatedControls:Array<Bool> = [];
+var prevControls:Array<Bool> = [];
+var activeKeyCount:Int = 4;
 var replayTxt:FlxText = null;
 var replaySine:Float = 0;
 var originalClientPrefs:Dynamic = null;
@@ -618,34 +681,39 @@ var settingsBackedUp:Bool = false;
  * Called before applying replay settings to allow restoration later.
  */
 function backupUserSettings() {
-	if (settingsBackedUp) {
-		debug('Settings already backed up, skipping');
+	if (settingsBackedUp)
 		return;
+
+	var prefFields = [
+		'downScroll',
+		'middleScroll',
+		'opponentStrums',
+		'ghostTapping',
+		'guitarHeroSustains',
+		'ratingOffset',
+		'sickWindow',
+		'goodWindow',
+		'badWindow',
+		'safeFrames'
+	];
+
+	originalClientPrefs = {};
+	for (field in prefFields) {
+		Reflect.setField(originalClientPrefs, field, Reflect.field(ClientPrefs.data, field));
 	}
 
-	// Backup ClientPrefs
-	var prefs = ClientPrefs.data;
-	originalClientPrefs = {
-		downScroll: prefs.downScroll,
-		middleScroll: prefs.middleScroll,
-		opponentStrums: prefs.opponentStrums,
-		ghostTapping: prefs.ghostTapping,
-		guitarHeroSustains: prefs.guitarHeroSustains,
-		ratingOffset: prefs.ratingOffset,
-		sickWindow: prefs.sickWindow,
-		goodWindow: prefs.goodWindow,
-		badWindow: prefs.badWindow,
-		safeFrames: prefs.safeFrames
-	};
+	var settingsMap = [
+		{backup: 'scrollType', game: 'scrolltype'},
+		{backup: 'scrollSpeed', game: 'scrollspeed'},
+		{backup: 'playbackRate', game: 'songspeed'},
+		{backup: 'healthGain', game: 'healthgain'},
+		{backup: 'healthLoss', game: 'healthloss'}
+	];
 
-	// Backup gameplay settings
-	originalGameplaySettings = {
-		scrollType: ClientPrefs.getGameplaySetting('scrolltype'),
-		scrollSpeed: ClientPrefs.getGameplaySetting('scrollspeed'),
-		playbackRate: ClientPrefs.getGameplaySetting('songspeed'),
-		healthGain: ClientPrefs.getGameplaySetting('healthgain'),
-		healthLoss: ClientPrefs.getGameplaySetting('healthloss')
-	};
+	originalGameplaySettings = {};
+	for (setting in settingsMap) {
+		Reflect.setField(originalGameplaySettings, setting.backup, ClientPrefs.getGameplaySetting(setting.game));
+	}
 
 	settingsBackedUp = true;
 	debug('User settings backed up');
@@ -656,45 +724,51 @@ function backupUserSettings() {
  * Called after replay ends to return settings to their pre-replay state.
  */
 function restoreUserSettings() {
-	if (!settingsBackedUp) {
-		debug('No settings to restore');
+	if (!settingsBackedUp)
 		return;
-	}
 
 	if (originalClientPrefs != null) {
-		var prefs = ClientPrefs.data;
-		prefs.downScroll = originalClientPrefs.downScroll;
-		prefs.middleScroll = originalClientPrefs.middleScroll;
-		prefs.opponentStrums = originalClientPrefs.opponentStrums;
-		prefs.ghostTapping = originalClientPrefs.ghostTapping;
-		prefs.guitarHeroSustains = originalClientPrefs.guitarHeroSustains;
-		prefs.ratingOffset = originalClientPrefs.ratingOffset;
-		prefs.sickWindow = originalClientPrefs.sickWindow;
-		prefs.goodWindow = originalClientPrefs.goodWindow;
-		prefs.badWindow = originalClientPrefs.badWindow;
-		prefs.safeFrames = originalClientPrefs.safeFrames;
-		debug('ClientPrefs restored');
+		var prefFields = [
+			'downScroll',
+			'middleScroll',
+			'opponentStrums',
+			'ghostTapping',
+			'guitarHeroSustains',
+			'ratingOffset',
+			'sickWindow',
+			'goodWindow',
+			'badWindow',
+			'safeFrames'
+		];
+
+		for (field in prefFields) {
+			if (Reflect.hasField(originalClientPrefs, field)) {
+				Reflect.setField(ClientPrefs.data, field, Reflect.field(originalClientPrefs, field));
+			}
+		}
 	}
 
 	if (originalGameplaySettings != null) {
 		var gs = ClientPrefs.data.gameplaySettings;
-		debug('Restoring scrolltype to ' + originalGameplaySettings.scrollType);
-		gs.set('scrolltype', originalGameplaySettings.scrollType);
-		debug('Restoring scrollspeed to ' + originalGameplaySettings.scrollSpeed);
-		gs.set('scrollspeed', originalGameplaySettings.scrollSpeed);
-		debug('Restoring songspeed to ' + originalGameplaySettings.playbackRate);
-		gs.set('songspeed', originalGameplaySettings.playbackRate);
-		debug('Restoring healthgain to ' + originalGameplaySettings.healthGain);
-		gs.set('healthgain', originalGameplaySettings.healthGain);
-		debug('Restoring healthloss to ' + originalGameplaySettings.healthLoss);
-		gs.set('healthloss', originalGameplaySettings.healthLoss);
-		debug('Gameplay settings restored');
+		var settingsMap = [
+			{backup: 'scrollType', game: 'scrolltype'},
+			{backup: 'scrollSpeed', game: 'scrollspeed'},
+			{backup: 'playbackRate', game: 'songspeed'},
+			{backup: 'healthGain', game: 'healthgain'},
+			{backup: 'healthLoss', game: 'healthloss'}
+		];
+
+		for (setting in settingsMap) {
+			if (Reflect.hasField(originalGameplaySettings, setting.backup)) {
+				gs.set(setting.game, Reflect.field(originalGameplaySettings, setting.backup));
+			}
+		}
 	}
 
 	settingsBackedUp = false;
 	originalClientPrefs = null;
 	originalGameplaySettings = null;
-	debug('User settings fully restored');
+	debug('User settings restored');
 }
 
 /**
@@ -759,6 +833,20 @@ function applyReplaySettings(replay:Dynamic) {
 }
 
 /**
+ * Initializes control arrays.
+ * Detects checks for "Keycount" from Vortex Extra Keys script and adjusts array sizes accordingly.
+ */
+function initializeControlArrays() {
+	var keyCount = getVar('keyCount');
+	activeKeyCount = (keyCount != null) ? keyCount : 4;
+
+	for (i in 0...activeKeyCount) {
+		simulatedControls.push(false);
+		prevControls.push(false);
+	}
+}
+
+/**
  * Starts playback of a replay.
  * Initializes playback state and displays the REPLAY indicator.
  * @param replay The replay data object to play
@@ -775,8 +863,7 @@ function startPlayback(replay:Dynamic) {
 	playbackStartTime = Conductor.songPosition;
 	replaySine = 0;
 
-	simulatedControls = [false, false, false, false];
-	prevControls = [false, false, false, false];
+	initializeControlArrays();
 
 	inputEventIndex = 0;
 	useInputEventPlayback = (Reflect.hasField(replay, 'inputEvents') && replay.inputEvents != null && replay.inputEvents.length > 0);
@@ -795,6 +882,8 @@ function startPlayback(replay:Dynamic) {
 		var eventInfo = useInputEventPlayback ? (' | input events: ' + currentReplay.inputEvents.length) : '';
 		debug('Playback started with ' + currentReplay.noteHits.length + ' note hits (v' + version + ')' + eventInfo);
 	}
+
+	setVar('isPlayingReplay', isPlayingReplay);
 }
 
 /**
@@ -816,6 +905,8 @@ function stopPlayback() {
 	modDirectoryOverrideActive = false;
 	pendingReplayModDirectory = null;
 	debug('Playback stopped');
+
+	setVar('isPlayingReplay', isPlayingReplay);
 }
 
 /**
@@ -823,7 +914,7 @@ function stopPlayback() {
  * Handles input events, note hits, animations, and sustains.
  */
 function updatePlayback() {
-	if (!isPlayingReplay || currentReplay == null || game == null)
+	if (!isPlayingReplay || currentReplay == null)
 		return;
 
 	var currentTime = Conductor.songPosition;
@@ -832,8 +923,6 @@ function updatePlayback() {
 	hitNotesFromRecording(currentTime);
 	animateGhostInputs();
 	checkSustainNotes();
-
-	syncPrevControlsWithSimulated();
 }
 
 /**
@@ -847,28 +936,30 @@ function updatePlaybackFrameStates(currentTime:Float) {
 
 	var events = currentReplay.inputEvents;
 	var processed:Bool = false;
-	var prevStates = [
-		simulatedControls[0],
-		simulatedControls[1],
-		simulatedControls[2],
-		simulatedControls[3]
-	];
 
 	while (inputEventIndex < events.length) {
 		var event = events[inputEventIndex];
-		var eventTime = Std.parseFloat(Std.string(event.time));
-		if (eventTime > currentTime)
+		if (Std.parseFloat(Std.string(event.time)) > currentTime)
 			break;
 
-		processed = true;
+		if (!processed) {
+			for (i in 0...activeKeyCount) {
+				prevControls[i] = simulatedControls[i];
+			}
+			processed = true;
+		}
+
 		var col = Std.int(event.col);
-		simulatedControls[col] = (event.pressed == true);
+		if (col >= 0 && col < activeKeyCount) {
+			simulatedControls[col] = (event.pressed == true);
+		}
 		inputEventIndex = inputEventIndex + 1;
 	}
 
-	if (processed) {
-		for (i in 0...4)
-			prevControls[i] = prevStates[i];
+	if (!processed) {
+		for (i in 0...activeKeyCount) {
+			prevControls[i] = simulatedControls[i];
+		}
 	}
 }
 
@@ -878,12 +969,10 @@ function updatePlaybackFrameStates(currentTime:Float) {
  * @param currentTime Current song position in milliseconds
  */
 function hitNotesFromRecording(currentTime:Float) {
-	if (currentReplay == null || game == null)
+	if (currentReplay == null || currentReplay.noteHits == null || currentReplay.noteHits.length == 0)
 		return;
 
 	var noteHits = currentReplay.noteHits;
-	if (noteHits == null || noteHits.length == 0)
-		return;
 
 	while (noteHitIndex < noteHits.length) {
 		var hitData = noteHits[noteHitIndex];
@@ -894,24 +983,14 @@ function hitNotesFromRecording(currentTime:Float) {
 
 		noteHitIndex = noteHitIndex + 1;
 
-		var col = Std.int(hitData.col);
-		var note = findNoteForRecordedHit(col, hitData);
+		var note = findNoteForRecordedHit(Std.int(hitData.col), hitData);
 		if (note != null) {
-			var originalSongPos:Float = Conductor.songPosition;
-			var restoreSongPos:Bool = false;
-			if (hitData != null && Reflect.hasField(hitData, 'hitTime')) {
-				var recordedHit = Std.parseFloat(Std.string(hitData.hitTime));
-				if (!Math.isNaN(recordedHit)) {
-					restoreSongPos = true;
-					Conductor.songPosition = recordedHit;
-				}
-			}
+			var originalSongPos = Conductor.songPosition;
+			Conductor.songPosition = hitTime;
 			isHittingNoteFromReplay = true;
 			game.goodNoteHit(note);
 			isHittingNoteFromReplay = false;
-			if (restoreSongPos) {
-				Conductor.songPosition = originalSongPos;
-			}
+			Conductor.songPosition = originalSongPos;
 		}
 	}
 }
@@ -924,22 +1003,14 @@ function hitNotesFromRecording(currentTime:Float) {
  * @return The matching note object, or null if not found
  */
 function findNoteForRecordedHit(lane:Int, hitData:Dynamic):Dynamic {
-	if (game == null || game.notes == null)
-		return null;
-
 	var members = game.notes.members;
 	if (members == null)
 		return null;
 
-	var targetTime:Null<Float> = null;
-	if (hitData != null && Reflect.hasField(hitData, 'time')) {
-		targetTime = Std.parseFloat(Std.string(hitData.time));
-	}
-
-	var expectSustain:Bool = (hitData != null && hitData.isSustain == true);
+	var targetTime = Std.parseFloat(Std.string(hitData.time));
+	var expectSustain = (hitData.isSustain == true);
 	var bestNote:Dynamic = null;
 	var bestScore:Float = 1.0e9;
-	var compareTime = targetTime != null ? targetTime : Conductor.songPosition;
 
 	for (candidate in members) {
 		if (candidate == null || !candidate.mustPress || candidate.noteData != lane)
@@ -948,10 +1019,10 @@ function findNoteForRecordedHit(lane:Int, hitData:Dynamic):Dynamic {
 		if (candidate.wasGoodHit || candidate.ignoreNote)
 			continue;
 
-		if ((expectSustain && !candidate.isSustainNote) || (!expectSustain && candidate.isSustainNote))
+		if (candidate.isSustainNote != expectSustain)
 			continue;
 
-		var score = Math.abs(candidate.strumTime - compareTime);
+		var score = Math.abs(candidate.strumTime - targetTime);
 
 		if (score < bestScore) {
 			bestScore = score;
@@ -967,29 +1038,27 @@ function findNoteForRecordedHit(lane:Int, hitData:Dynamic):Dynamic {
  * Shows visual feedback for ghost inputs during replay playback.
  */
 function animateGhostInputs() {
-	if (game == null || game.playerStrums == null)
-		return;
-
 	var strums = game.playerStrums.members;
 	if (strums == null)
 		return;
 
-	for (i in 0...4) {
-		if (!prevControls[i] && simulatedControls[i])
-			showGhostPress(i);
-		if (prevControls[i] && !simulatedControls[i])
-			showGhostRelease(i);
+	for (i in 0...activeKeyCount) {
+		if (simulatedControls[i] != prevControls[i]) {
+			if (simulatedControls[i]) {
+				showGhostPress(strums, i);
+			} else {
+				showGhostRelease(strums, i);
+			}
+		}
 	}
 }
 
 /**
  * Shows strum press animation for a ghost input.
+ * @param strums Cached strum array
  * @param lane Strum lane (0-3)
  */
-function showGhostPress(lane:Int) {
-	if (game == null || game.playerStrums == null)
-		return;
-	var strums = game.playerStrums.members;
+function showGhostPress(strums:Dynamic, lane:Int) {
 	if (lane >= 0 && lane < strums.length) {
 		var strum = strums[lane];
 		if (strum != null && strum.animation.curAnim.name != 'confirm') {
@@ -1001,12 +1070,10 @@ function showGhostPress(lane:Int) {
 
 /**
  * Shows strum release animation for a ghost input.
+ * @param strums Cached strum array
  * @param lane Strum lane (0-3)
  */
-function showGhostRelease(lane:Int) {
-	if (game == null || game.playerStrums == null)
-		return;
-	var strums = game.playerStrums.members;
+function showGhostRelease(strums:Dynamic, lane:Int) {
 	if (lane >= 0 && lane < strums.length) {
 		var strum = strums[lane];
 		if (strum != null) {
@@ -1021,41 +1088,28 @@ function showGhostRelease(lane:Int) {
  * Runs every frame to ensure sustains are hit properly during replay.
  */
 function checkSustainNotes() {
-	if (game == null || game.notes == null)
-		return;
-
 	var members = game.notes.members;
 	if (members == null)
 		return;
 
 	var guitarHero = game.guitarHeroSustains;
 
-	for (lane in 0...4) {
-		if (!simulatedControls[lane])
+	for (note in members) {
+		if (note == null || !note.mustPress || !note.isSustainNote)
 			continue;
 
-		for (note in members) {
-			if (note == null || !note.mustPress || note.noteData != lane || !note.isSustainNote)
-				continue;
+		if (note.wasGoodHit || note.tooLate || !note.canBeHit || note.blockHit)
+			continue;
 
-			if (note.wasGoodHit || note.tooLate || !note.canBeHit || note.blockHit)
-				continue;
+		var lane = note.noteData;
+		if (lane < 0 || lane >= activeKeyCount || !simulatedControls[lane])
+			continue;
 
-			if (guitarHero && (note.parent == null || !note.parent.wasGoodHit))
-				continue;
+		if (guitarHero && (note.parent == null || !note.parent.wasGoodHit))
+			continue;
 
-			game.goodNoteHit(note);
-		}
+		game.goodNoteHit(note);
 	}
-}
-
-/**
- * Syncs the previous control states with current simulated states.
- * Called at end of updatePlayback() to prepare for next frame.
- */
-function syncPrevControlsWithSimulated() {
-	for (i in 0...4)
-		prevControls[i] = simulatedControls[i];
 }
 
 // ========================================
@@ -1310,6 +1364,11 @@ function getReplayInfo(replay:Dynamic):String {
 		}
 	}
 
+	// Show if replay ended in game over
+	if (Reflect.hasField(result, 'died') && result.died == true) {
+		info += '\n[GAME OVER - Incomplete Run]';
+	}
+
 	return info;
 }
 
@@ -1478,7 +1537,13 @@ function handleReplayViewerInput() {
 		updateMenuSelection();
 	} else if (controls.ACCEPT) {
 		debug('ACCEPT pressed');
-		selectReplay();
+		if (!replay_enabled) {
+			FlxG.sound.play(Paths.sound('cancelMenu'));
+			debug('Replay system is disabled - cannot play replay');
+			return;
+		} else {
+			selectReplay();
+		}
 	}
 }
 
@@ -1773,7 +1838,8 @@ function onUpdate(elapsed:Float) {
 function onKeyPress(key:Int) {
 	if (!replay_enabled || !isRecording || isPlayingReplay)
 		return;
-	if (key < 0 || key > 3)
+
+	if (key < 0)
 		return;
 	recordInputEvent(key, true);
 }
@@ -1781,7 +1847,8 @@ function onKeyPress(key:Int) {
 function onKeyRelease(key:Int) {
 	if (!replay_enabled || !isRecording || isPlayingReplay)
 		return;
-	if (key < 0 || key > 3)
+
+	if (key < 0)
 		return;
 	recordInputEvent(key, false);
 }
@@ -1845,6 +1912,23 @@ function onEndSong() {
 			createSaveInterface();
 			return Function_Stop;
 		}
+	}
+
+	return Function_Continue;
+}
+
+function onGameOver() {
+	if (!replay_enabled)
+		return Function_Continue;
+
+	if (!replay_saveOnGameOver) {
+		debug('Game Over - save on game over disabled');
+		return Function_Continue;
+	}
+
+	if (isRecording) {
+		debug('Game Over - saving replay');
+		saveReplayOnGameOver();
 	}
 
 	return Function_Continue;
