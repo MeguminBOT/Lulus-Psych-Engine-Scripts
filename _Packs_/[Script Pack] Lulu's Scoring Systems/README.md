@@ -93,14 +93,14 @@ Wife3 uses an **error function (erf)** curve — accuracy points are continuous,
 
 $$
 \begin{aligned}
-&s = \text{Judge Scale} \quad\quad \text{ridic} = 5s \quad\quad \text{max}\_\text{boo} = 180s \\
-&\text{zero} = 65 \cdot s^{0.75} \quad\quad \text{dev} = 22.7 \cdot s^{0.75} \\[8pt]
+&s = \text{Judge Scale} \quad\quad \text{ridic} = 5s \quad\quad \text{max\\_boo} = 180s \\
+&\text{zero} = 65 \cdot s^{0.75} \quad\quad \text{dev} = 22.7 \cdot s^{0.75} \\
 &\text{points}(t) = \begin{cases}
 +2.0 & |t| \leq \text{ridic} \\
-+2.0 \times \text{erf}\!\left(\dfrac{\text{zero} - |t|}{\text{dev}}\right) & |t| \leq \text{zero} \\[4pt]
-\dfrac{(|t| - \text{zero}) \times (-5.5)}{\text{max}\_\text{boo} - \text{zero}} & |t| \leq \text{max}\_\text{boo} \\[4pt]
--5.5 & |t| > \text{max}\_\text{boo}
-\end{cases} \\[8pt]
++2.0 \times \text{erf}\!\left(\dfrac{\text{zero} - |t|}{\text{dev}}\right) & |t| \leq \text{zero} \\
+\dfrac{(|t| - \text{zero}) \times (-5.5)}{\text{max\\_boo} - \text{zero}} & |t| \leq \text{max\\_boo} \\
+-5.5 & |t| > \text{max\\_boo}
+\end{cases} \\
 &\text{Wife3 \%} = \frac{\displaystyle\sum_{i=1}^{N} \text{points}_i}{N \times 2.0} \times 100
 \end{aligned}
 $$
@@ -132,7 +132,7 @@ Wife3 % = (Σ points / (total_notes × 2.0)) × 100
 #### Score Formula
 
 $$
-\text{ratio} = \frac{\text{accuracy}\_\text{points}}{2.0}
+\text{ratio} = \frac{\text{accuracy\\_points}}{2.0}
 $$
 
 $$
