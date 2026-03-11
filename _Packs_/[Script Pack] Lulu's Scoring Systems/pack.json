@@ -1,0 +1,7 @@
+{
+	"name": "[Script Pack] Lulu's Scoring Systems",
+	"description": "Custom scoring systems: Wife3, osu!mania, ITG, Ruthless, O2Jam\nIncludes timing display, score comparison, and rating popups",
+	"restart": false,
+	"runsGlobally": true,
+	"color": [0, 170, 255]
+}
