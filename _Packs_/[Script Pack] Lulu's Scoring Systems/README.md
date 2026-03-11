@@ -97,7 +97,7 @@ $$
 &\text{zero} = 65 \cdot s^{0.75} \quad\quad \text{dev} = 22.7 \cdot s^{0.75} \\[8pt]
 &\text{points}(t) = \begin{cases}
 +2.0 & |t| \leq \text{ridic} \\
-+2.0 \times \operatorname{erf}\!\left(\dfrac{\text{zero} - |t|}{\text{dev}}\right) & |t| \leq \text{zero} \\[4pt]
++2.0 \times \text{erf}\!\left(\dfrac{\text{zero} - |t|}{\text{dev}}\right) & |t| \leq \text{zero} \\[4pt]
 \dfrac{(|t| - \text{zero}) \times (-5.5)}{\text{max\_boo} - \text{zero}} & |t| \leq \text{max\_boo} \\[4pt]
 -5.5 & |t| > \text{max\_boo}
 \end{cases} \\[8pt]
