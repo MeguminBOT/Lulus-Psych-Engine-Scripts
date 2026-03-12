@@ -42,22 +42,18 @@ Also includes:
 
 ## Quick Comparison
 
-> **Authentic Score / Authentic Accuracy** — indicates whether the score or accuracy formula faithfully recreates the original game's algorithm. "Yes" means the formula is directly ported from the source game. "No" means the source game either does not have that formula at all (e.g. Etterna tracks accuracy only — it has no score formula, so one was custom-built for this pack) or the formula was otherwise replaced with a custom implementation. "—" means the system is entirely custom with no source game to compare against.
->
-> **LNs Judged** — whether long note (hold note) releases are timed and scored independently. "Yes" = release is hit within a timing window and scored separately. "Pass/Fail" = release is tracked but only as binary (held to end or not, no timing window). "No" = releases are not judged at all.
-
-| System | Origin Game | Max Score | Accuracy Type | Configurable Difficulty | Combo Matters for Score? | Authentic Score | Authentic Accuracy | LNs Judged |
-|--------|-------------|-----------|---------------|------------------------|--------------------------|-----------------|---------------------|--------------------|
-| **Psych** | FNF Psych Engine | Varies | Hit ratio | No | No | Yes | Yes | No |
-| **Wife3** | Etterna | Varies | Error-function curve | Judge 1–9 (scale 0.009–4.0) | No | No | Yes | No |
-| **osu!mania V1** | osu! | 1,000,000 | Weighted hit ratio | OD 0–10 | Yes (bonus multiplier) | Yes | Yes | Yes |
-| **osu!mania V2** | osu! | 1,000,000 | Weighted hit ratio | OD 0–10 | Yes (70% of score) | Yes | Yes | Yes |
-| **ITG** | In The Groove / StepMania | 10,000,000 | Dance Points | Window Scale 0.1–4.0 | No (step counter weighted) | Yes | Yes | Pass/Fail |
-| **Ruthless** | Custom | 1,000,000 | Smoothstep curve | Perfect Window 0–25ms | No (bonus multiplier) | — | — | No |
-| **O2Jam** | O2Jam | Unlimited | Weighted hit ratio | BPM scaling toggle | Yes (score = weight × combo) | Yes | Yes | No |
-| **DJMAX** | DJMAX RESPECT V | 1,000,000 | Weighted average | No | No | Yes | Yes | No |
-| **IIDX** | beatmania IIDX | EX Score | EX Rate | No | No | Yes | Yes | No |
-| **Quaver** | Quaver | 1,000,000 | Weighted average | No | No | Yes | Yes | No |
+| System | Origin Game | Max Score | Accuracy Type | Configurable Difficulty | Combo Matters for Score? |
+|--------|-------------|-----------|---------------|------------------------|--------------------------|
+| **Psych** | FNF Psych Engine | Varies | Hit ratio | No | No |
+| **Wife3** | Etterna | Varies | Error-function curve | Judge 1–9 (scale 0.009–4.0) | No |
+| **osu!mania V1** | osu! | 1,000,000 | Weighted hit ratio | OD 0–10 | Yes (bonus multiplier) |
+| **osu!mania V2** | osu! | 1,000,000 | Weighted hit ratio | OD 0–10 | Yes (70% of score) |
+| **ITG** | In The Groove / StepMania | 10,000,000 | Dance Points | Window Scale 0.1–4.0 | No (step counter weighted) |
+| **Ruthless** | Custom | 1,000,000 | Smoothstep curve | Perfect Window 0–25ms | No (bonus multiplier) |
+| **O2Jam** | O2Jam | Unlimited | Weighted hit ratio | BPM scaling toggle | Yes (score = weight × combo) |
+| **DJMAX** | DJMAX RESPECT V | 1,000,000 | Weighted average | No | No |
+| **IIDX** | beatmania IIDX | EX Score | EX Rate | No | No |
+| **Quaver** | Quaver | 1,000,000 | Weighted average | No | No |
 
 ---
 
@@ -97,13 +93,13 @@ Wife3 uses an **error function (erf)** curve — accuracy points are continuous,
 
 $$
 \begin{aligned}
-&s = \text{Judge Scale} \quad\quad \text{ridic} = 5s \quad\quad \text{max\_boo} = 180s \\
+&s = \text{Judge Scale} \quad\quad \text{ridic} = 5s \quad\quad \text{max\\_boo} = 180s \\
 &\text{zero} = 65 \cdot s^{0.75} \quad\quad \text{dev} = 22.7 \cdot s^{0.75} \\
 &\text{points}(t) = \begin{cases}
 +2.0 & |t| \leq \text{ridic} \\
 +2.0 \times \text{erf}\!\left(\dfrac{\text{zero} - |t|}{\text{dev}}\right) & |t| \leq \text{zero} \\
-\dfrac{(|t| - \text{zero}) \times (-5.5)}{\text{max\_boo} - \text{zero}} & |t| \leq \text{max\_boo} \\
--5.5 & |t| > \text{max\_boo}
+\dfrac{(|t| - \text{zero}) \times (-5.5)}{\text{max\\_boo} - \text{zero}} & |t| \leq \text{max\\_boo} \\
+-5.5 & |t| > \text{max\\_boo}
 \end{cases} \\
 &\text{Wife3 \%} = \frac{\displaystyle\sum_{i=1}^{N} \text{points}_i}{N \times 2.0} \times 100
 \end{aligned}
@@ -136,7 +132,7 @@ Wife3 % = (Σ points / (total_notes × 2.0)) × 100
 #### Score Formula
 
 $$
-\text{ratio} = \frac{\text{accuracy\_points}}{2.0}
+\text{ratio} = \frac{\text{accuracy\\_points}}{2.0}
 $$
 
 $$
@@ -376,9 +372,9 @@ Windows scale with **Window Scale** multiplier:
 
 | Judgement | Base Window | Formula |
 |-----------|-------------|---------|
-| Fantastic | ±21.5ms | `21.5 × scale` |
-| Excellent | ±43ms | `43 × scale` |
-| Great | ±102ms | `102 × scale` |
+| Fantastic | ±22.5ms | `22.5 × scale` |
+| Excellent | ±45ms | `45 × scale` |
+| Great | ±90ms | `90 × scale` |
 | Decent | ±135ms | `135 × scale` |
 | Way Off | ±180ms | `180 × scale` |
 
@@ -960,7 +956,7 @@ All values in milliseconds (±ms from perfect). Default settings for all systems
 |--------|--------------|--------|--------|--------|--------|------|
 | **Wife3** (J4) | ±22 (Marv) | ±45 (Perf) | ±90 (Great) | ±135 (Good) | ±180 (Bad) | — |
 | **osu!mania** (OD8) | ±16 (MAX) | ±40 (300) | ±73 (200) | ±103 (100) | ±127 (50) | > 127 |
-| **ITG** (1.0×) | ±21.5 (Fant) | ±43 (Exc) | ±102 (Great) | ±135 (Dec) | ±180 (WO) | — |
+| **ITG** (1.0×) | ±22.5 (Fant) | ±45 (Exc) | ±90 (Great) | ±135 (Dec) | ±180 (WO) | — |
 | **Ruthless** (10ms) | ±10 (Flaw) | ±20 (Prec) | ±30 (Great) | ±40 (Good) | ±50–100 | > 100 |
 | **O2Jam** (fixed) | ±33 (COOL) | ±67 (GOOD) | ±100 (BAD) | — | — | > 100 |
 | **DJMAX** | ±16 (MAX100) | ±33 (MAX90) | ±66 (GOOD) | ±100 (BAD) | — | > 100 |
@@ -975,7 +971,7 @@ All values in milliseconds (±ms from perfect). Default settings for all systems
 4. **IIDX** — 16.67ms
 5. **Quaver** — 18ms
 6. **Wife3** — 22ms (J4 default, configurable down to 8.8ms at J9)
-7. **ITG** — 21.5ms (configurable)
+7. **ITG** — 22.5ms (configurable)
 8. **O2Jam** — 33ms (fixed) / BPM-dependent
 
 ---
