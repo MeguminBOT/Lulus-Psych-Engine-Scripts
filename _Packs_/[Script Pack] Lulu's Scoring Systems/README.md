@@ -53,7 +53,7 @@ Also includes:
 | **osu!mania V1** | osu! | 1,000,000 | Weighted hit ratio | OD 0–10 | Yes (bonus multiplier) | Yes | Yes | Yes |
 | **osu!mania V2** | osu! | 1,000,000 | Weighted hit ratio | OD 0–10 | Yes (70% of score) | Yes | Yes | Yes |
 | **ITG** | In The Groove / StepMania | 10,000,000 | Dance Points | Window Scale 0.1–4.0 | No (step counter weighted) | Yes | Yes | Pass/Fail |
-| **Ruthless** | Custom | 1,000,000 | Smoothstep curve | Perfect Window 0–25ms | No (bonus multiplier) | — | — | No |
+| **Ruthless** | Custom | 1,000,000 | Linear curve | Perfect Window 0–25ms | No (bonus multiplier) | — | — | No |
 | **O2Jam** | O2Jam | Unlimited | Weighted hit ratio | BPM scaling toggle | Yes (score = weight × combo) | Yes | Yes | No |
 | **DJMAX** | DJMAX RESPECT V | 1,000,000 | Weighted average | No | No | Yes | Yes | No |
 | **IIDX** | beatmania IIDX | EX Score | EX Rate | No | No | Yes | Yes | No |
@@ -516,23 +516,23 @@ Score = BaseScore + BonusScore    (max 1,000,000)
 | Judgement | HitValue | BonusValue | HitBonus | HitPunishment |
 |-----------|----------|------------|----------|---------------|
 | Flawless | 320 | 32 | +2.0 | 0 |
-| Precise | 310 | 32 | +1.5 | 0 |
-| Great | 300 | 32 | +1.0 | 0 |
-| Good | 250 | 24 | 0 | −4 |
-| Ok | 200 | 16 | 0 | −8 |
-| Sloppy | 100 | 8 | 0 | −24 |
-| Barely | 50 | 4 | 0 | −44 |
+| Precise | 310 | 24 | +1.0 | 0 |
+| Great | 300 | 16 | 0 | 0 |
+| Good | 250 | 12 | 0 | −4 |
+| Ok | 200 | 8 | 0 | −8 |
+| Sloppy | 100 | 4 | 0 | −24 |
+| Barely | 50 | 2 | 0 | −44 |
 | Miss | 0 | 0 | 0 | reset to 0 |
 
 #### Accuracy Formula
 
-Linear smoothstep with halved punishment past 50ms:
+Linear falloff with doubled punishment rate past 50ms:
 
 $$
 \text{points}(t) = \begin{cases}
 1.0 & |t| \leq p \\
 0.0 & |t| \geq 100 \\
-\left(1 - \dfrac{|t| - p}{100 - p}\right) \times 0.5 & |t| > 50 \\
+1 - \dfrac{(50 + (|t| - 50) \times 2) - p}{100 - p} & |t| > 50 \\
 1 - \dfrac{|t| - p}{100 - p} & \text{otherwise}
 \end{cases}
 $$
@@ -551,8 +551,12 @@ if |offset| ≤ perfect_window:  accuracy_points = 1.0 (100%)
 if |offset| ≥ 100ms:           accuracy_points = 0.0 (0%)
 
 Otherwise:
-  linear = 1.0 − (|offset| − perfect_window) / (100 − perfect_window)
-  if |offset| > 50ms:  linear = linear × 0.5
+  if |offset| > 50ms:
+    adjusted = 50 + (|offset| − 50) × 2
+    linear = 1.0 − (adjusted − perfect_window) / (100 − perfect_window)
+    accuracy_points = max(0, linear)
+  else:
+    linear = 1.0 − (|offset| − perfect_window) / (100 − perfect_window)
 
 Accuracy % = (Σ accuracy_points / total_notes) × 100
 Range: 0–100% (never negative)
@@ -582,8 +586,8 @@ Range: 0–100% (never negative)
 
 | Tier | Criteria |
 |------|----------|
-| MFC | All Flawless, no misses |
-| SFC | Flawless + Precise only, no misses |
+| FFC | All Flawless, no misses |
+| PFC | Flawless + Precise only, no misses |
 | GFC | Up to Great, no misses |
 | FC | No misses |
 | SDCB | < 10 misses |
@@ -591,7 +595,7 @@ Range: 0–100% (never negative)
 
 #### Combo Behavior
 
-All judgements (Flawless through Barely) **maintain combo**. Only misses break combo.
+Judgements within 50ms (Flawless through Ok) **maintain combo**. Hits later than 50ms (Sloppy, Barely) **break combo**. Misses also break combo.
 
 #### Settings
 
