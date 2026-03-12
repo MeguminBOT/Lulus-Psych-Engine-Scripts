@@ -1,0 +1,9 @@
+{
+	"antialiasing": true,
+	"offsets": {
+		"max100": [0, 0],
+		"max90": [0, 0],
+		"good": [0, 0],
+		"bad": [0, 0]
+	}
+}

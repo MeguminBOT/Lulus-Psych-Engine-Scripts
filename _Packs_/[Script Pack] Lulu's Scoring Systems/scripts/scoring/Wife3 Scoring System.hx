@@ -28,6 +28,7 @@
 // ========================================
 // --- General Settings ---
 var wife3_enabled = true;
+var wife3_isActiveSystem = false;
 var wife3_debug = false;
 var wife3_replaceScoreText = true;
 var wife3_kadeEngineStyle = false; // Whether to use Kade Engine style scoreText or Psych Engine style.
@@ -62,16 +63,27 @@ var wife3_badHits = 0; // <= 180ms * judge scale
  */
 function loadSettings() {
 	var settingsPath:String = 'data/settings.json';
-	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
-		trace('[Wife3] settings.json not found, using default values from script');
+	if (!FileSystem.exists(Paths.modFolders(settingsPath)))
 		return;
-	}
-	trace('[Wife3] settings.json found, loading settings...');
 
 	var value:Dynamic;
 
-	if ((value = getModSetting('scoring_system')) != null)
-		wife3_enabled = (value == 'Wife3');
+	if ((value = getModSetting('scoring_system')) != null) {
+		wife3_isActiveSystem = (value == 'Wife3');
+		wife3_enabled = wife3_isActiveSystem;
+	}
+
+	if (!wife3_enabled) {
+		var cmpEnabled:Dynamic = getModSetting('scoring_showComparison');
+		var cmpShow:Dynamic = getModSetting('cmp_showWife3');
+		if (cmpEnabled == true && cmpShow == true)
+			wife3_enabled = true;
+	}
+
+	if (!wife3_enabled)
+		return;
+
+	trace('[Wife3] settings.json found, loading settings...');
 
 	if ((value = getModSetting('scoring_debug')) != null)
 		wife3_debug = value;
@@ -615,9 +627,8 @@ function onCreatePost() {
 }
 
 function preUpdateScore(miss:Bool) {
-	// Only prevent default score text update if Wife3 score text replacement is enabled
-	// This allows Wife3 to run in the background while keeping Psych Engine's score text
-	if (wife3_enabled && wife3_replaceScoreText) {
+	// Only prevent default score text update if Wife3 is the active system with score text replacement enabled
+	if (wife3_isActiveSystem && wife3_replaceScoreText) {
 		if (!miss) {
 			game.doScoreBop();
 		}
@@ -627,13 +638,15 @@ function preUpdateScore(miss:Bool) {
 }
 
 function onUpdateScore(miss:Bool) {
-	if (wife3_enabled && wife3_replaceScoreText) {
+	if (wife3_isActiveSystem && wife3_replaceScoreText) {
 		wife3_updateScoreText();
 	}
 }
 
 function goodNoteHit(note:Note) {
 	if (note.isSustainNote || !note.mustPress)
+		return;
+	if (!wife3_enabled)
 		return;
 
 	// Calculate timing offset
@@ -677,6 +690,8 @@ function goodNoteHit(note:Note) {
 
 function noteMiss(note:Note) {
 	if (note.isSustainNote || !note.mustPress)
+		return;
+	if (!wife3_enabled)
 		return;
 
 	wife3_curAccuracy += wife3_miss_weight;

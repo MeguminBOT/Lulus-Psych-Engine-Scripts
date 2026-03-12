@@ -38,6 +38,7 @@
 // ========================================
 // --- General Settings ---
 var iidx_enabled = true;
+var iidx_isActiveSystem = false;
 var iidx_debug = false;
 var iidx_replaceScoreText = true;
 var iidx_kadeEngineStyle = false;
@@ -71,16 +72,27 @@ var iidx_badHits = 0;
  */
 function loadSettings() {
 	var settingsPath:String = 'data/settings.json';
-	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
-		trace('[IIDX] settings.json not found, using default values from script');
+	if (!FileSystem.exists(Paths.modFolders(settingsPath)))
 		return;
-	}
-	trace('[IIDX] settings.json found, loading settings...');
 
 	var value:Dynamic;
 
-	if ((value = getModSetting('scoring_system')) != null)
-		iidx_enabled = (value == 'IIDX');
+	if ((value = getModSetting('scoring_system')) != null) {
+		iidx_isActiveSystem = (value == 'IIDX');
+		iidx_enabled = iidx_isActiveSystem;
+	}
+
+	if (!iidx_enabled) {
+		var cmpEnabled:Dynamic = getModSetting('scoring_showComparison');
+		var cmpShow:Dynamic = getModSetting('cmp_showIIDX');
+		if (cmpEnabled == true && cmpShow == true)
+			iidx_enabled = true;
+	}
+
+	if (!iidx_enabled)
+		return;
+
+	trace('[IIDX] settings.json found, loading settings...');
 
 	if ((value = getModSetting('scoring_debug')) != null)
 		iidx_debug = value;
@@ -522,7 +534,7 @@ function onCreatePost() {
 }
 
 function preUpdateScore(miss:Bool) {
-	if (iidx_enabled && iidx_replaceScoreText) {
+	if (iidx_isActiveSystem && iidx_replaceScoreText) {
 		if (!miss)
 			game.doScoreBop();
 		return Function_Stop;
@@ -531,12 +543,14 @@ function preUpdateScore(miss:Bool) {
 }
 
 function onUpdateScore(miss:Bool) {
-	if (iidx_enabled && iidx_replaceScoreText)
+	if (iidx_isActiveSystem && iidx_replaceScoreText)
 		iidx_updateScoreText();
 }
 
 function goodNoteHit(note:Note) {
 	if (note.isSustainNote || !note.mustPress)
+		return;
+	if (!iidx_enabled)
 		return;
 
 	// Calculate timing offset
@@ -554,6 +568,8 @@ function goodNoteHit(note:Note) {
 
 function noteMiss(note:Note) {
 	if (note.isSustainNote || !note.mustPress)
+		return;
+	if (!iidx_enabled)
 		return;
 
 	// Process the POOR

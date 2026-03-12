@@ -32,6 +32,7 @@
 // ========================================
 // --- General Settings ---
 var quaver_enabled = true;
+var quaver_isActiveSystem = false;
 var quaver_debug = false;
 var quaver_replaceScoreText = true;
 var quaver_kadeEngineStyle = false;
@@ -72,16 +73,27 @@ var quaver_goodHits = 0;
  */
 function loadSettings() {
 	var settingsPath:String = 'data/settings.json';
-	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
-		trace('[Quaver] settings.json not found, using default values from script');
+	if (!FileSystem.exists(Paths.modFolders(settingsPath)))
 		return;
-	}
-	trace('[Quaver] settings.json found, loading settings...');
 
 	var value:Dynamic;
 
-	if ((value = getModSetting('scoring_system')) != null)
-		quaver_enabled = (value == 'Quaver');
+	if ((value = getModSetting('scoring_system')) != null) {
+		quaver_isActiveSystem = (value == 'Quaver');
+		quaver_enabled = quaver_isActiveSystem;
+	}
+
+	if (!quaver_enabled) {
+		var cmpEnabled:Dynamic = getModSetting('scoring_showComparison');
+		var cmpShow:Dynamic = getModSetting('cmp_showQuaver');
+		if (cmpEnabled == true && cmpShow == true)
+			quaver_enabled = true;
+	}
+
+	if (!quaver_enabled)
+		return;
+
+	trace('[Quaver] settings.json found, loading settings...');
 
 	if ((value = getModSetting('scoring_debug')) != null)
 		quaver_debug = value;
@@ -543,7 +555,7 @@ function onCreatePost() {
 }
 
 function preUpdateScore(miss:Bool) {
-	if (quaver_enabled && quaver_replaceScoreText) {
+	if (quaver_isActiveSystem && quaver_replaceScoreText) {
 		if (!miss)
 			game.doScoreBop();
 		return Function_Stop;
@@ -552,12 +564,14 @@ function preUpdateScore(miss:Bool) {
 }
 
 function onUpdateScore(miss:Bool) {
-	if (quaver_enabled && quaver_replaceScoreText)
+	if (quaver_isActiveSystem && quaver_replaceScoreText)
 		quaver_updateScoreText();
 }
 
 function goodNoteHit(note:Note) {
 	if (note.isSustainNote || !note.mustPress)
+		return;
+	if (!quaver_enabled)
 		return;
 
 	// Calculate timing offset
@@ -575,6 +589,8 @@ function goodNoteHit(note:Note) {
 
 function noteMiss(note:Note) {
 	if (note.isSustainNote || !note.mustPress)
+		return;
+	if (!quaver_enabled)
 		return;
 
 	// Process the miss

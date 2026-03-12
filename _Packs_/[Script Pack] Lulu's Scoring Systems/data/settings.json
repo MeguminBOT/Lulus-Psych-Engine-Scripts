@@ -26,8 +26,27 @@
 		"save": "scoring_ratingPopups",
 		"name": "Custom Rating Popups",
 		"type": "bool",
-		"description": "Replace Psych Engine's default rating popups (sick/good/bad/shit)\nwith custom sprites matching the active scoring system's judgement tiers.\n\nRequires images in: images/ratings/[system]/[judgement].png\nExample: images/ratings/ruthless/flawless.png",
+		"description": "Replace Psych Engine's default rating popups (sick/good/bad/shit)\nwith sprites matching the active scoring system's judgement tiers.\n\nRequires images in: images/ratings/[system]/[judgement].png",
 		"value": false
+	},
+	{
+		"save": "scoring_ratingScale",
+		"name": "Rating Popup Scale",
+		"type": "float",
+		"description": "Scale multiplier for custom rating popups.\n1.0 = default size, 0.5 = half, 2.0 = double",
+		"value": 1.0,
+		"min": 0.1,
+		"max": 4.0,
+		"step": 0.1,
+		"decimals": 3
+	},
+	{
+		"save": "scoring_ratingAntialiasing",
+		"name": "Rating Popup Antialiasing",
+		"type": "string",
+		"description": "Antialiasing mode for custom rating popups.\n\nTheme Default: Uses the value from the theme file (theme.json)\nClientPrefs: Uses your game's antialiasing setting\nOn: Always enabled\nOff: Always disabled",
+		"value": "Theme Default",
+		"options": ["Theme Default", "ClientPrefs", "On", "Off"]
 	},
 	{
 		"save": "scoring_showTimingDisplay",
@@ -49,6 +68,84 @@
 		"type": "bool",
 		"description": "Show all scoring systems (Psych, Wife3, osu!mania V1/V2, ITG, Ruthless, O2Jam, DJMAX, IIDX, Quaver) side by side\nUseful for comparing accuracy and score across systems",
 		"value": false
+	},
+	{
+		"save": "cmp_header",
+		"name": "-COMPARISON TOGGLES-",
+		"type": "string",
+		"description": "Choose which scoring systems to show in the Score Comparison panel\nOnly applies when Show Score Comparison is enabled",
+		"value": " ",
+		"options": [" ", " ", " ", " "]
+	},
+	{
+		"save": "cmp_showPsych",
+		"name": "Show Psych Engine",
+		"type": "bool",
+		"description": "Show Psych Engine in the Score Comparison panel",
+		"value": true
+	},
+	{
+		"save": "cmp_showWife3",
+		"name": "Show Wife3",
+		"type": "bool",
+		"description": "Show Wife3 (Etterna) in the Score Comparison panel",
+		"value": true
+	},
+	{
+		"save": "cmp_showRuthless",
+		"name": "Show Ruthless",
+		"type": "bool",
+		"description": "Show Lulu's Ruthless in the Score Comparison panel",
+		"value": true
+	},
+	{
+		"save": "cmp_showOsuMania",
+		"name": "Show osu!mania",
+		"type": "bool",
+		"description": "Show osu!mania V1 in the Score Comparison panel",
+		"value": true
+	},
+	{
+		"save": "cmp_showOsuManiaV2",
+		"name": "Show osu!mania V2",
+		"type": "bool",
+		"description": "Show osu!mania V2 in the Score Comparison panel",
+		"value": true
+	},
+	{
+		"save": "cmp_showQuaver",
+		"name": "Show Quaver",
+		"type": "bool",
+		"description": "Show Quaver in the Score Comparison panel",
+		"value": true
+	},
+	{
+		"save": "cmp_showDJMAX",
+		"name": "Show DJMAX",
+		"type": "bool",
+		"description": "Show DJMAX in the Score Comparison panel",
+		"value": true
+	},
+	{
+		"save": "cmp_showO2Jam",
+		"name": "Show O2Jam",
+		"type": "bool",
+		"description": "Show O2Jam in the Score Comparison panel",
+		"value": true
+	},
+	{
+		"save": "cmp_showITG",
+		"name": "Show ITG",
+		"type": "bool",
+		"description": "Show StepMania ITG in the Score Comparison panel",
+		"value": true
+	},
+	{
+		"save": "cmp_showIIDX",
+		"name": "Show IIDX",
+		"type": "bool",
+		"description": "Show BeatMania IIDX in the Score Comparison panel",
+		"value": true
 	},
 	{
 		"save": "scoring_showJudgementCounter",

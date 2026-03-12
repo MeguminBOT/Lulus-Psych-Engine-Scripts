@@ -35,6 +35,7 @@
 // ========================================
 // --- General Settings ---
 var djmax_enabled = true;
+var djmax_isActiveSystem = false;
 var djmax_debug = false;
 var djmax_replaceScoreText = true;
 var djmax_kadeEngineStyle = false;
@@ -75,16 +76,27 @@ var djmax_badHits = 0;
  */
 function loadSettings() {
 	var settingsPath:String = 'data/settings.json';
-	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
-		trace('[DJMAX] settings.json not found, using default values from script');
+	if (!FileSystem.exists(Paths.modFolders(settingsPath)))
 		return;
-	}
-	trace('[DJMAX] settings.json found, loading settings...');
 
 	var value:Dynamic;
 
-	if ((value = getModSetting('scoring_system')) != null)
-		djmax_enabled = (value == 'DJMAX');
+	if ((value = getModSetting('scoring_system')) != null) {
+		djmax_isActiveSystem = (value == 'DJMAX');
+		djmax_enabled = djmax_isActiveSystem;
+	}
+
+	if (!djmax_enabled) {
+		var cmpEnabled:Dynamic = getModSetting('scoring_showComparison');
+		var cmpShow:Dynamic = getModSetting('cmp_showDJMAX');
+		if (cmpEnabled == true && cmpShow == true)
+			djmax_enabled = true;
+	}
+
+	if (!djmax_enabled)
+		return;
+
+	trace('[DJMAX] settings.json found, loading settings...');
 
 	if ((value = getModSetting('scoring_debug')) != null)
 		djmax_debug = value;
@@ -538,7 +550,7 @@ function onCreatePost() {
 }
 
 function preUpdateScore(miss:Bool) {
-	if (djmax_enabled && djmax_replaceScoreText) {
+	if (djmax_isActiveSystem && djmax_replaceScoreText) {
 		if (!miss)
 			game.doScoreBop();
 		return Function_Stop;
@@ -547,12 +559,14 @@ function preUpdateScore(miss:Bool) {
 }
 
 function onUpdateScore(miss:Bool) {
-	if (djmax_enabled && djmax_replaceScoreText)
+	if (djmax_isActiveSystem && djmax_replaceScoreText)
 		djmax_updateScoreText();
 }
 
 function goodNoteHit(note:Note) {
 	if (note.isSustainNote || !note.mustPress)
+		return;
+	if (!djmax_enabled)
 		return;
 
 	// Calculate timing offset
@@ -570,6 +584,8 @@ function goodNoteHit(note:Note) {
 
 function noteMiss(note:Note) {
 	if (note.isSustainNote || !note.mustPress)
+		return;
+	if (!djmax_enabled)
 		return;
 
 	// Process the BREAK

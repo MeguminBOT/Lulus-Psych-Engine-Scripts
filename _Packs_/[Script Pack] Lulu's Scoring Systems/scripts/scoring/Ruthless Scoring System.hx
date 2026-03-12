@@ -29,6 +29,7 @@
 // ========================================
 // --- General Settings ---
 var ruthless_enabled = true;
+var ruthless_isActiveSystem = false;
 var ruthless_debug = false;
 var ruthless_replaceScoreText = true;
 var ruthless_kadeEngineStyle = false; // Whether to use Kade Engine style scoreText or Psych Engine style.
@@ -66,16 +67,27 @@ var ruthless_barelyHits = 0; // Barely (<=100ms)
  */
 function loadSettings() {
 	var settingsPath:String = 'data/settings.json';
-	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
-		trace('[Ruthless] settings.json not found, using default values from script');
+	if (!FileSystem.exists(Paths.modFolders(settingsPath)))
 		return;
-	}
-	trace('[Ruthless] settings.json found, loading settings...');
 
 	var value:Dynamic;
 
-	if ((value = getModSetting('scoring_system')) != null)
-		ruthless_enabled = (value == 'Ruthless');
+	if ((value = getModSetting('scoring_system')) != null) {
+		ruthless_isActiveSystem = (value == 'Ruthless');
+		ruthless_enabled = ruthless_isActiveSystem;
+	}
+
+	if (!ruthless_enabled) {
+		var cmpEnabled:Dynamic = getModSetting('scoring_showComparison');
+		var cmpShow:Dynamic = getModSetting('cmp_showRuthless');
+		if (cmpEnabled == true && cmpShow == true)
+			ruthless_enabled = true;
+	}
+
+	if (!ruthless_enabled)
+		return;
+
+	trace('[Ruthless] settings.json found, loading settings...');
 
 	if ((value = getModSetting('scoring_debug')) != null)
 		ruthless_debug = value;
@@ -695,7 +707,7 @@ function onCreatePost() {
 }
 
 function preUpdateScore(miss:Bool) {
-	if (ruthless_enabled && ruthless_replaceScoreText) {
+	if (ruthless_isActiveSystem && ruthless_replaceScoreText) {
 		if (!miss) {
 			game.doScoreBop();
 		}
@@ -705,13 +717,15 @@ function preUpdateScore(miss:Bool) {
 }
 
 function onUpdateScore(miss:Bool) {
-	if (ruthless_enabled && ruthless_replaceScoreText) {
+	if (ruthless_isActiveSystem && ruthless_replaceScoreText) {
 		ruthless_updateScoreText();
 	}
 }
 
 function goodNoteHit(note:Note) {
 	if (note.isSustainNote || !note.mustPress)
+		return;
+	if (!ruthless_enabled)
 		return;
 
 	// Calculate timing offset
@@ -768,6 +782,8 @@ function goodNoteHit(note:Note) {
 
 function noteMiss(note:Note) {
 	if (note.isSustainNote || !note.mustPress)
+		return;
+	if (!ruthless_enabled)
 		return;
 
 	// Miss adds 0 points but still increases max possible (no negative penalty)

@@ -1,0 +1,12 @@
+{
+	"antialiasing": true,
+	"offsets": {
+		"flawless": [0, 0],
+		"precise": [0, 0],
+		"great": [0, 0],
+		"good": [0, 0],
+		"ok": [0, 0],
+		"sloppy": [0, 0],
+		"barely": [0, 0]
+	}
+}

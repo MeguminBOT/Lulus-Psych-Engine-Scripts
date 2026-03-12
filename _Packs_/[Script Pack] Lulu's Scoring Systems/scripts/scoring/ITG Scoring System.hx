@@ -8,7 +8,7 @@
 		Features:
 			- Full DDR MAX2-style point scoring (max 10,000,000 per song).
 			- Dance Point percentage accuracy (0-100%).
-			- ITG timing windows: Fantastic (±22.5ms), Excellent (±45ms), Great (±90ms),
+			- ITG timing windows: Fantastic (±21.5ms), Excellent (±43ms), Great (±102ms),
 			  Decent (±135ms), Way Off (±180ms).
 			- Hold note judgements (OK/NG) with dance point and score integration.
 			- Window Scale support for customizable timing difficulty.
@@ -26,6 +26,7 @@
 // ========================================
 // --- General Settings ---
 var itg_enabled = true;
+var itg_isActiveSystem = false;
 var itg_debug = false;
 var itg_replaceScoreText = true;
 var itg_kadeEngineStyle = false; // Whether to use Kade Engine style scoreText or Psych Engine style.
@@ -48,9 +49,9 @@ var itg_earnedDP = 0.0;
 var itg_maxDP = 0.0;
 
 // --- Judgement Tracking (Do Not Modify) ---
-var itg_fantasticHits = 0; // Fantastic (±22.5ms * scale)
-var itg_excellentHits = 0; // Excellent (±45ms * scale)
-var itg_greatHits = 0; // Great (±90ms * scale)
+var itg_fantasticHits = 0; // Fantastic (±21.5ms * scale)
+var itg_excellentHits = 0; // Excellent (±43ms * scale)
+var itg_greatHits = 0; // Great (±102ms * scale)
 var itg_decentHits = 0; // Decent (±135ms * scale)
 var itg_wayOffHits = 0; // Way Off (±180ms * scale)
 // --- Hold Tracking (Do Not Modify) ---
@@ -67,16 +68,27 @@ var itg_holdNGs = 0; // Holds dropped early
  */
 function loadSettings() {
 	var settingsPath:String = 'data/settings.json';
-	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
-		trace('[ITG] settings.json not found, using default values from script');
+	if (!FileSystem.exists(Paths.modFolders(settingsPath)))
 		return;
-	}
-	trace('[ITG] settings.json found, loading settings...');
 
 	var value:Dynamic;
 
-	if ((value = getModSetting('scoring_system')) != null)
-		itg_enabled = (value == 'ITG');
+	if ((value = getModSetting('scoring_system')) != null) {
+		itg_isActiveSystem = (value == 'ITG');
+		itg_enabled = itg_isActiveSystem;
+	}
+
+	if (!itg_enabled) {
+		var cmpEnabled:Dynamic = getModSetting('scoring_showComparison');
+		var cmpShow:Dynamic = getModSetting('cmp_showITG');
+		if (cmpEnabled == true && cmpShow == true)
+			itg_enabled = true;
+	}
+
+	if (!itg_enabled)
+		return;
+
+	trace('[ITG] settings.json found, loading settings...');
 
 	if ((value = getModSetting('scoring_debug')) != null)
 		itg_debug = value;
@@ -123,10 +135,10 @@ function debug(message:String, ?color:FlxColor = null) {
 /**
  * Gets the hit window (in ms) for a judgement at the current window scale.
  *
- * ITG timing windows (default, before scaling):
- *   Fantastic: ±22.5ms
- *   Excellent: ±45.0ms
- *   Great:     ±90.0ms
+ * ITG2 timing windows (from ITG2 theme metrics.ini, before scaling):
+ *   Fantastic: ±21.5ms
+ *   Excellent: ±43.0ms
+ *   Great:     ±102.0ms
  *   Decent:    ±135.0ms
  *   Way Off:   ±180.0ms
  *
@@ -137,11 +149,11 @@ function itg_getHitWindow(judgement:String):Float {
 	var base = 0.0;
 	switch (judgement.toLowerCase()) {
 		case 'fantastic':
-			base = 22.5;
+			base = 21.5;
 		case 'excellent':
-			base = 45.0;
+			base = 43.0;
 		case 'great':
-			base = 90.0;
+			base = 102.0;
 		case 'decent':
 			base = 135.0;
 		case 'wayoff':
@@ -507,7 +519,7 @@ function itg_getRatingFC():String {
 
 /**
  * Returns the total number of Fantastic judgements.
- * @return Count of Fantastic hits (<=22.5ms * scale)
+ * @return Count of Fantastic hits (<=21.5ms * scale)
  */
 function itg_getFantasticHits():Int {
 	return itg_fantasticHits;
@@ -515,7 +527,7 @@ function itg_getFantasticHits():Int {
 
 /**
  * Returns the total number of Excellent judgements.
- * @return Count of Excellent hits (<=45ms * scale)
+ * @return Count of Excellent hits (<=43ms * scale)
  */
 function itg_getExcellentHits():Int {
 	return itg_excellentHits;
@@ -523,7 +535,7 @@ function itg_getExcellentHits():Int {
 
 /**
  * Returns the total number of Great judgements.
- * @return Count of Great hits (<=90ms * scale)
+ * @return Count of Great hits (<=102ms * scale)
  */
 function itg_getGreatHits():Int {
 	return itg_greatHits;
@@ -774,7 +786,7 @@ function onCreatePost() {
 }
 
 function preUpdateScore(miss:Bool) {
-	if (itg_enabled && itg_replaceScoreText) {
+	if (itg_isActiveSystem && itg_replaceScoreText) {
 		if (!miss)
 			game.doScoreBop();
 		return Function_Stop;
@@ -783,12 +795,14 @@ function preUpdateScore(miss:Bool) {
 }
 
 function onUpdateScore(miss:Bool) {
-	if (itg_enabled && itg_replaceScoreText)
+	if (itg_isActiveSystem && itg_replaceScoreText)
 		itg_updateScoreText();
 }
 
 function goodNoteHit(note:Note) {
 	if (!note.mustPress)
+		return;
+	if (!itg_enabled)
 		return;
 
 	// Handle sustain notes - only process the LAST tail piece as Hold OK
@@ -837,6 +851,8 @@ function goodNoteHit(note:Note) {
 
 function noteMiss(note:Note) {
 	if (!note.mustPress)
+		return;
+	if (!itg_enabled)
 		return;
 
 	// Handle sustain note misses - only process last tail as Hold NG

@@ -1,0 +1,10 @@
+{
+	"antialiasing": true,
+	"offsets": {
+		"fantastic": [0, 0],
+		"excellent": [0, 0],
+		"great": [0, 0],
+		"decent": [0, 0],
+		"wayoff": [0, 0]
+	}
+}

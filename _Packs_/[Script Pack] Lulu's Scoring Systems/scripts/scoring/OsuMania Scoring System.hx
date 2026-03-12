@@ -23,6 +23,7 @@
 // ========================================
 // --- General Settings ---
 var osu_enabled = true;
+var osu_isActiveSystem = false;
 var osu_debug = false;
 var osu_replaceScoreText = true;
 var osu_kadeEngineStyle = false; // Whether to use Kade Engine style scoreText or Psych Engine style.
@@ -70,16 +71,27 @@ var osu_holdBreaks:Array<Dynamic> = []; // Tracks parent note indices with broke
  */
 function loadSettings() {
 	var settingsPath:String = 'data/settings.json';
-	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
-		trace('[osu!mania] settings.json not found, using default values from script');
+	if (!FileSystem.exists(Paths.modFolders(settingsPath)))
 		return;
-	}
-	trace('[osu!mania] settings.json found, loading settings...');
 
 	var value:Dynamic;
 
-	if ((value = getModSetting('scoring_system')) != null)
-		osu_enabled = (value == 'OsuMania');
+	if ((value = getModSetting('scoring_system')) != null) {
+		osu_isActiveSystem = (value == 'OsuMania');
+		osu_enabled = osu_isActiveSystem;
+	}
+
+	if (!osu_enabled) {
+		var cmpEnabled:Dynamic = getModSetting('scoring_showComparison');
+		var cmpShow:Dynamic = getModSetting('cmp_showOsuMania');
+		if (cmpEnabled == true && cmpShow == true)
+			osu_enabled = true;
+	}
+
+	if (!osu_enabled)
+		return;
+
+	trace('[osu!mania] settings.json found, loading settings...');
 
 	if ((value = getModSetting('scoring_debug')) != null)
 		osu_debug = value;
@@ -889,7 +901,7 @@ function onCreatePost() {
 }
 
 function preUpdateScore(miss:Bool) {
-	if (osu_enabled && osu_replaceScoreText) {
+	if (osu_isActiveSystem && osu_replaceScoreText) {
 		if (!miss)
 			game.doScoreBop();
 		return Function_Stop;
@@ -898,12 +910,14 @@ function preUpdateScore(miss:Bool) {
 }
 
 function onUpdateScore(miss:Bool) {
-	if (osu_enabled && osu_replaceScoreText)
+	if (osu_isActiveSystem && osu_replaceScoreText)
 		osu_updateScoreText();
 }
 
 function goodNoteHit(note:Note) {
 	if (!note.mustPress)
+		return;
+	if (!osu_enabled)
 		return;
 
 	// Handle sustain notes - only process the LAST tail piece as a tail judgement
@@ -952,6 +966,8 @@ function goodNoteHit(note:Note) {
 
 function noteMiss(note:Note) {
 	if (!note.mustPress)
+		return;
+	if (!osu_enabled)
 		return;
 
 	// Handle sustain note misses - only process the last tail piece

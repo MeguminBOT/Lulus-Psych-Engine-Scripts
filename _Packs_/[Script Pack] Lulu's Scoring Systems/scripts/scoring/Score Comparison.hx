@@ -17,6 +17,18 @@
 
 var cmp_enabled = true;
 
+// --- Per-system show toggles ---
+var cmp_showPsych = true;
+var cmp_showWife3 = true;
+var cmp_showRuthless = true;
+var cmp_showOsuMania = true;
+var cmp_showOsuManiaV2 = true;
+var cmp_showQuaver = true;
+var cmp_showDJMAX = true;
+var cmp_showO2Jam = true;
+var cmp_showITG = true;
+var cmp_showIIDX = true;
+
 // --- Hit Counters (universal timing buckets) ---
 var cmp_hits16 = 0; // <=16ms  (IIDX PGreat, osu MAX, DJMAX MAX100%)
 var cmp_hits22 = 0; // <=22ms  (Wife3 Marvelous, ITG Fantastic, Quaver Marvelous)
@@ -94,6 +106,27 @@ function loadSettings() {
 
 	if ((value = getModSetting('scoring_showComparison')) != null)
 		cmp_enabled = value;
+
+	if ((value = getModSetting('cmp_showPsych')) != null)
+		cmp_showPsych = value;
+	if ((value = getModSetting('cmp_showWife3')) != null)
+		cmp_showWife3 = value;
+	if ((value = getModSetting('cmp_showRuthless')) != null)
+		cmp_showRuthless = value;
+	if ((value = getModSetting('cmp_showOsuMania')) != null)
+		cmp_showOsuMania = value;
+	if ((value = getModSetting('cmp_showOsuManiaV2')) != null)
+		cmp_showOsuManiaV2 = value;
+	if ((value = getModSetting('cmp_showQuaver')) != null)
+		cmp_showQuaver = value;
+	if ((value = getModSetting('cmp_showDJMAX')) != null)
+		cmp_showDJMAX = value;
+	if ((value = getModSetting('cmp_showO2Jam')) != null)
+		cmp_showO2Jam = value;
+	if ((value = getModSetting('cmp_showITG')) != null)
+		cmp_showITG = value;
+	if ((value = getModSetting('cmp_showIIDX')) != null)
+		cmp_showIIDX = value;
 }
 
 // ========================================
@@ -150,97 +183,117 @@ function cmp_updateDisplay() {
 	if (cmp_text == null)
 		return;
 
-	// Psych Engine values (always calculated by the engine)
-	var psychScore = game.songScore;
-	var psychHasData = (game.totalPlayed > 0);
-	var psychAcc = psychHasData ? cmp_formatPercent(game.ratingPercent * 100) : '?';
-	var psychGrade = psychHasData ? game.ratingName : '?';
-	var psychFC = game.ratingFC;
-
-	// Wife3 values (read directly from Wife3 Scoring System.hx)
-	var w3Acc = cmp_wife3_getAccuracy();
-	var w3HasData = (w3Acc > 0 || game.totalPlayed > 0);
-	var w3AccStr = w3HasData ? cmp_wife3_formatPercent(w3Acc) : '?';
-	var w3Grade = w3HasData ? cmp_wife3_getGrade(w3Acc) : '?';
-	var w3Score = cmp_wife3_getScore();
-	var w3FC = w3HasData ? cmp_wife3_getRatingFC() : '';
-
-	// osu!mania values (read directly from OsuMania Scoring System.hx)
-	var osuAcc = cmp_osu_getAccuracy();
-	var osuHasData = (osuAcc > 0 || game.totalPlayed > 0);
-	var osuAccStr = osuHasData ? cmp_osu_formatPercent(osuAcc) : '?';
-	var osuGrade = osuHasData ? cmp_osu_getGrade(osuAcc) : '?';
-	var osuScore = cmp_osu_getScore();
-	var osuFC = osuHasData ? cmp_osu_getRatingFC() : '';
-
-	// Ruthless values (read directly from Ruthless Scoring System.hx)
-	var ruthlessAcc = cmp_ruthless_getAccuracy();
-	var ruthlessHasData = (ruthlessAcc > 0 || game.totalPlayed > 0);
-	var ruthlessAccStr = ruthlessHasData ? cmp_ruthless_formatPercent(ruthlessAcc) : '?';
-	var ruthlessGrade = ruthlessHasData ? cmp_ruthless_getGrade(ruthlessAcc) : '?';
-	var ruthlessScore = cmp_ruthless_getScore();
-	var ruthlessFC = ruthlessHasData ? cmp_ruthless_getRatingFC() : '';
-
-	// osu!mania V2 values (read directly from OsuManiaV2 Scoring System.hx)
-	var osuv2Acc = cmp_osuv2_getAccuracy();
-	var osuv2HasData = (osuv2Acc > 0 || game.totalPlayed > 0);
-	var osuv2AccStr = osuv2HasData ? cmp_osuv2_formatPercent(osuv2Acc) : '?';
-	var osuv2Grade = osuv2HasData ? cmp_osuv2_getGrade(osuv2Acc) : '?';
-	var osuv2Score = cmp_osuv2_getScore();
-	var osuv2FC = osuv2HasData ? cmp_osuv2_getRatingFC() : '';
-
-	// Quaver values (read directly from Quaver Scoring System.hx)
-	var quaverAcc = cmp_quaver_getAccuracy();
-	var quaverHasData = (quaverAcc > 0 || game.totalPlayed > 0);
-	var quaverAccStr = quaverHasData ? cmp_quaver_formatPercent(quaverAcc) : '?';
-	var quaverGrade = quaverHasData ? cmp_quaver_getGrade(quaverAcc) : '?';
-	var quaverScore = cmp_quaver_getScore();
-	var quaverFC = quaverHasData ? cmp_quaver_getRatingFC() : '';
-
-	// DJMAX values (read directly from DJMAX Scoring System.hx)
-	var djmaxAcc = cmp_djmax_getAccuracy();
-	var djmaxHasData = (djmaxAcc > 0 || game.totalPlayed > 0);
-	var djmaxAccStr = djmaxHasData ? cmp_djmax_formatPercent(djmaxAcc) : '?';
-	var djmaxGrade = djmaxHasData ? cmp_djmax_getGrade(djmaxAcc) : '?';
-	var djmaxScore = cmp_djmax_getScore();
-	var djmaxFC = djmaxHasData ? cmp_djmax_getRatingFC() : '';
-
-	// ITG values (read directly from ITG Scoring System.hx)
-	var itgAcc = cmp_itg_getAccuracy();
-	var itgHasData = (itgAcc > 0 || game.totalPlayed > 0);
-	var itgAccStr = itgHasData ? cmp_itg_formatPercent(itgAcc) : '?';
-	var itgGrade = itgHasData ? cmp_itg_getGrade(itgAcc) : '?';
-	var itgScore = cmp_itg_getScore();
-	var itgFC = itgHasData ? cmp_itg_getRatingFC() : '';
-
-	// O2Jam values (read directly from O2Jam Scoring System.hx)
-	var o2jamAcc = cmp_o2jam_getAccuracy();
-	var o2jamHasData = (o2jamAcc > 0 || game.totalPlayed > 0);
-	var o2jamAccStr = o2jamHasData ? cmp_o2jam_formatPercent(o2jamAcc) : '?';
-	var o2jamGrade = o2jamHasData ? cmp_o2jam_getGrade(o2jamAcc) : '?';
-	var o2jamScore = cmp_o2jam_getScore();
-	var o2jamFC = o2jamHasData ? cmp_o2jam_getRatingFC() : '';
-
-	// IIDX values (read directly from IIDX Scoring System.hx)
-	var iidxAcc = cmp_iidx_getAccuracy();
-	var iidxHasData = (iidxAcc > 0 || game.totalPlayed > 0);
-	var iidxAccStr = iidxHasData ? cmp_iidx_formatPercent(iidxAcc) : '?';
-	var iidxGrade = iidxHasData ? cmp_iidx_getGrade(iidxAcc) : '?';
-	var iidxScore = cmp_iidx_getScore();
-	var iidxFC = iidxHasData ? cmp_iidx_getRatingFC() : '';
-
 	// Build display text (aligned columns)
 	var lines = '--- Score Comparison ---\n';
-	lines = lines + cmp_formatRow('Psych Engine', '' + psychScore, psychAcc, psychGrade, psychFC) + '\n';
-	lines = lines + cmp_formatRow('Wife3', '' + w3Score, w3AccStr, w3Grade, w3FC) + '\n';
-	lines = lines + cmp_formatRow('Lulus Ruthless', '' + ruthlessScore, ruthlessAccStr, ruthlessGrade, ruthlessFC) + '\n';
-	lines = lines + cmp_formatRow('osu!mania', '' + osuScore, osuAccStr, osuGrade, osuFC) + '\n';
-	lines = lines + cmp_formatRow('osu!mania V2', '' + osuv2Score, osuv2AccStr, osuv2Grade, osuv2FC) + '\n';
-	lines = lines + cmp_formatRow('Quaver', '' + quaverScore, quaverAccStr, quaverGrade, quaverFC) + '\n';
-	lines = lines + cmp_formatRow('DJMAX', '' + djmaxScore, djmaxAccStr, djmaxGrade, djmaxFC) + '\n';
-	lines = lines + cmp_formatRow('O2Jam', '' + o2jamScore, o2jamAccStr, o2jamGrade, o2jamFC) + '\n';
-	lines = lines + cmp_formatRow('StepMania ITG', '' + itgScore, itgAccStr, itgGrade, itgFC) + '\n';
-	lines = lines + cmp_formatRow('BeatMania IIDX', 'EX ' + iidxScore, iidxAccStr, iidxGrade, iidxFC) + '\n';
+
+	// Psych Engine values (always calculated by the engine)
+	if (cmp_showPsych) {
+		var psychScore = game.songScore;
+		var psychHasData = (game.totalPlayed > 0);
+		var psychAcc = psychHasData ? cmp_formatPercent(game.ratingPercent * 100) : '?';
+		var psychGrade = psychHasData ? game.ratingName : '?';
+		var psychFC = game.ratingFC;
+		lines = lines + cmp_formatRow('Psych Engine', '' + psychScore, psychAcc, psychGrade, psychFC) + '\n';
+	}
+
+	// Wife3
+	if (cmp_showWife3) {
+		var w3Acc = cmp_wife3_getAccuracy();
+		var w3HasData = (w3Acc > 0 || game.totalPlayed > 0);
+		var w3AccStr = w3HasData ? cmp_wife3_formatPercent(w3Acc) : '?';
+		var w3Grade = w3HasData ? cmp_wife3_getGrade(w3Acc) : '?';
+		var w3Score = cmp_wife3_getScore();
+		var w3FC = w3HasData ? cmp_wife3_getRatingFC() : '';
+		lines = lines + cmp_formatRow('Wife3', '' + w3Score, w3AccStr, w3Grade, w3FC) + '\n';
+	}
+
+	// Ruthless
+	if (cmp_showRuthless) {
+		var ruthlessAcc = cmp_ruthless_getAccuracy();
+		var ruthlessHasData = (ruthlessAcc > 0 || game.totalPlayed > 0);
+		var ruthlessAccStr = ruthlessHasData ? cmp_ruthless_formatPercent(ruthlessAcc) : '?';
+		var ruthlessGrade = ruthlessHasData ? cmp_ruthless_getGrade(ruthlessAcc) : '?';
+		var ruthlessScore = cmp_ruthless_getScore();
+		var ruthlessFC = ruthlessHasData ? cmp_ruthless_getRatingFC() : '';
+		lines = lines + cmp_formatRow('Lulus Ruthless', '' + ruthlessScore, ruthlessAccStr, ruthlessGrade, ruthlessFC) + '\n';
+	}
+
+	// osu!mania V1
+	if (cmp_showOsuMania) {
+		var osuAcc = cmp_osu_getAccuracy();
+		var osuHasData = (osuAcc > 0 || game.totalPlayed > 0);
+		var osuAccStr = osuHasData ? cmp_osu_formatPercent(osuAcc) : '?';
+		var osuGrade = osuHasData ? cmp_osu_getGrade(osuAcc) : '?';
+		var osuScore = cmp_osu_getScore();
+		var osuFC = osuHasData ? cmp_osu_getRatingFC() : '';
+		lines = lines + cmp_formatRow('osu!mania', '' + osuScore, osuAccStr, osuGrade, osuFC) + '\n';
+	}
+
+	// osu!mania V2
+	if (cmp_showOsuManiaV2) {
+		var osuv2Acc = cmp_osuv2_getAccuracy();
+		var osuv2HasData = (osuv2Acc > 0 || game.totalPlayed > 0);
+		var osuv2AccStr = osuv2HasData ? cmp_osuv2_formatPercent(osuv2Acc) : '?';
+		var osuv2Grade = osuv2HasData ? cmp_osuv2_getGrade(osuv2Acc) : '?';
+		var osuv2Score = cmp_osuv2_getScore();
+		var osuv2FC = osuv2HasData ? cmp_osuv2_getRatingFC() : '';
+		lines = lines + cmp_formatRow('osu!mania V2', '' + osuv2Score, osuv2AccStr, osuv2Grade, osuv2FC) + '\n';
+	}
+
+	// Quaver
+	if (cmp_showQuaver) {
+		var quaverAcc = cmp_quaver_getAccuracy();
+		var quaverHasData = (quaverAcc > 0 || game.totalPlayed > 0);
+		var quaverAccStr = quaverHasData ? cmp_quaver_formatPercent(quaverAcc) : '?';
+		var quaverGrade = quaverHasData ? cmp_quaver_getGrade(quaverAcc) : '?';
+		var quaverScore = cmp_quaver_getScore();
+		var quaverFC = quaverHasData ? cmp_quaver_getRatingFC() : '';
+		lines = lines + cmp_formatRow('Quaver', '' + quaverScore, quaverAccStr, quaverGrade, quaverFC) + '\n';
+	}
+
+	// DJMAX
+	if (cmp_showDJMAX) {
+		var djmaxAcc = cmp_djmax_getAccuracy();
+		var djmaxHasData = (djmaxAcc > 0 || game.totalPlayed > 0);
+		var djmaxAccStr = djmaxHasData ? cmp_djmax_formatPercent(djmaxAcc) : '?';
+		var djmaxGrade = djmaxHasData ? cmp_djmax_getGrade(djmaxAcc) : '?';
+		var djmaxScore = cmp_djmax_getScore();
+		var djmaxFC = djmaxHasData ? cmp_djmax_getRatingFC() : '';
+		lines = lines + cmp_formatRow('DJMAX', '' + djmaxScore, djmaxAccStr, djmaxGrade, djmaxFC) + '\n';
+	}
+
+	// O2Jam
+	if (cmp_showO2Jam) {
+		var o2jamAcc = cmp_o2jam_getAccuracy();
+		var o2jamHasData = (o2jamAcc > 0 || game.totalPlayed > 0);
+		var o2jamAccStr = o2jamHasData ? cmp_o2jam_formatPercent(o2jamAcc) : '?';
+		var o2jamGrade = o2jamHasData ? cmp_o2jam_getGrade(o2jamAcc) : '?';
+		var o2jamScore = cmp_o2jam_getScore();
+		var o2jamFC = o2jamHasData ? cmp_o2jam_getRatingFC() : '';
+		lines = lines + cmp_formatRow('O2Jam', '' + o2jamScore, o2jamAccStr, o2jamGrade, o2jamFC) + '\n';
+	}
+
+	// ITG
+	if (cmp_showITG) {
+		var itgAcc = cmp_itg_getAccuracy();
+		var itgHasData = (itgAcc > 0 || game.totalPlayed > 0);
+		var itgAccStr = itgHasData ? cmp_itg_formatPercent(itgAcc) : '?';
+		var itgGrade = itgHasData ? cmp_itg_getGrade(itgAcc) : '?';
+		var itgScore = cmp_itg_getScore();
+		var itgFC = itgHasData ? cmp_itg_getRatingFC() : '';
+		lines = lines + cmp_formatRow('StepMania ITG', '' + itgScore, itgAccStr, itgGrade, itgFC) + '\n';
+	}
+
+	// IIDX
+	if (cmp_showIIDX) {
+		var iidxAcc = cmp_iidx_getAccuracy();
+		var iidxHasData = (iidxAcc > 0 || game.totalPlayed > 0);
+		var iidxAccStr = iidxHasData ? cmp_iidx_formatPercent(iidxAcc) : '?';
+		var iidxGrade = iidxHasData ? cmp_iidx_getGrade(iidxAcc) : '?';
+		var iidxScore = cmp_iidx_getScore();
+		var iidxFC = iidxHasData ? cmp_iidx_getRatingFC() : '';
+		lines = lines + cmp_formatRow('BeatMania IIDX', 'EX ' + iidxScore, iidxAccStr, iidxGrade, iidxFC) + '\n';
+	}
 
 	// Universal timing hit breakdown
 
@@ -334,14 +387,17 @@ function onCreatePost() {
 	cmp_quaver_getRatingFC = getVar('quaver_getRatingFC');
 	cmp_quaver_formatPercent = getVar('quaver_formatPercent');
 
-	// Verify callbacks are available
-	if (cmp_wife3_getAccuracy == null || cmp_osu_getAccuracy == null || cmp_itg_getAccuracy == null || cmp_ruthless_getAccuracy == null
-		|| cmp_o2jam_getAccuracy == null || cmp_djmax_getAccuracy == null || cmp_iidx_getAccuracy == null || cmp_osuv2_getAccuracy == null
-		|| cmp_quaver_getAccuracy == null) {
-		trace('[ScoreComparison] WARNING: Could not find scoring script callbacks. Make sure Wife3, osu!mania V1/V2, ITG, Ruthless, O2Jam, DJMAX, IIDX, and Quaver scripts are loaded.');
-		cmp_enabled = false;
-		return;
-	}
+	// Verify callbacks are available for shown systems
+	var missingCallbacks = false;
+	if (cmp_showWife3 && cmp_wife3_getAccuracy == null) { trace('[ScoreComparison] WARNING: Wife3 callbacks not found'); cmp_showWife3 = false; missingCallbacks = true; }
+	if (cmp_showOsuMania && cmp_osu_getAccuracy == null) { trace('[ScoreComparison] WARNING: osu!mania callbacks not found'); cmp_showOsuMania = false; missingCallbacks = true; }
+	if (cmp_showOsuManiaV2 && cmp_osuv2_getAccuracy == null) { trace('[ScoreComparison] WARNING: osu!mania V2 callbacks not found'); cmp_showOsuManiaV2 = false; missingCallbacks = true; }
+	if (cmp_showITG && cmp_itg_getAccuracy == null) { trace('[ScoreComparison] WARNING: ITG callbacks not found'); cmp_showITG = false; missingCallbacks = true; }
+	if (cmp_showRuthless && cmp_ruthless_getAccuracy == null) { trace('[ScoreComparison] WARNING: Ruthless callbacks not found'); cmp_showRuthless = false; missingCallbacks = true; }
+	if (cmp_showO2Jam && cmp_o2jam_getAccuracy == null) { trace('[ScoreComparison] WARNING: O2Jam callbacks not found'); cmp_showO2Jam = false; missingCallbacks = true; }
+	if (cmp_showDJMAX && cmp_djmax_getAccuracy == null) { trace('[ScoreComparison] WARNING: DJMAX callbacks not found'); cmp_showDJMAX = false; missingCallbacks = true; }
+	if (cmp_showIIDX && cmp_iidx_getAccuracy == null) { trace('[ScoreComparison] WARNING: IIDX callbacks not found'); cmp_showIIDX = false; missingCallbacks = true; }
+	if (cmp_showQuaver && cmp_quaver_getAccuracy == null) { trace('[ScoreComparison] WARNING: Quaver callbacks not found'); cmp_showQuaver = false; missingCallbacks = true; }
 
 	cmp_createDisplay();
 	cmp_updateDisplay();

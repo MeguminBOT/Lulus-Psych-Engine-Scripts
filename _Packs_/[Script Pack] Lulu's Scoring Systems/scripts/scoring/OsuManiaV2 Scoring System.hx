@@ -31,6 +31,7 @@
 // ========================================
 // --- General Settings ---
 var osuv2_enabled = true;
+var osuv2_isActiveSystem = false;
 var osuv2_debug = false;
 var osuv2_replaceScoreText = true;
 var osuv2_kadeEngineStyle = false;
@@ -71,16 +72,27 @@ var osuv2_tailLenience = 1.5;
  */
 function loadSettings() {
 	var settingsPath:String = 'data/settings.json';
-	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
-		trace('[osu!maniaV2] settings.json not found, using default values from script');
+	if (!FileSystem.exists(Paths.modFolders(settingsPath)))
 		return;
-	}
-	trace('[osu!maniaV2] settings.json found, loading settings...');
 
 	var value:Dynamic;
 
-	if ((value = getModSetting('scoring_system')) != null)
-		osuv2_enabled = (value == 'OsuManiaV2');
+	if ((value = getModSetting('scoring_system')) != null) {
+		osuv2_isActiveSystem = (value == 'OsuManiaV2');
+		osuv2_enabled = osuv2_isActiveSystem;
+	}
+
+	if (!osuv2_enabled) {
+		var cmpEnabled:Dynamic = getModSetting('scoring_showComparison');
+		var cmpShow:Dynamic = getModSetting('cmp_showOsuManiaV2');
+		if (cmpEnabled == true && cmpShow == true)
+			osuv2_enabled = true;
+	}
+
+	if (!osuv2_enabled)
+		return;
+
+	trace('[osu!maniaV2] settings.json found, loading settings...');
 
 	if ((value = getModSetting('scoring_debug')) != null)
 		osuv2_debug = value;
@@ -646,7 +658,7 @@ function onCreatePost() {
 }
 
 function preUpdateScore(miss:Bool) {
-	if (osuv2_enabled && osuv2_replaceScoreText) {
+	if (osuv2_isActiveSystem && osuv2_replaceScoreText) {
 		if (!miss)
 			game.doScoreBop();
 		return Function_Stop;
@@ -655,12 +667,14 @@ function preUpdateScore(miss:Bool) {
 }
 
 function onUpdateScore(miss:Bool) {
-	if (osuv2_enabled && osuv2_replaceScoreText)
+	if (osuv2_isActiveSystem && osuv2_replaceScoreText)
 		osuv2_updateScoreText();
 }
 
 function goodNoteHit(note:Note) {
 	if (!note.mustPress)
+		return;
+	if (!osuv2_enabled)
 		return;
 
 	// Handle sustain tail (last piece only)
@@ -702,6 +716,8 @@ function goodNoteHit(note:Note) {
 
 function noteMiss(note:Note) {
 	if (!note.mustPress)
+		return;
+	if (!osuv2_enabled)
 		return;
 
 	// Handle sustain tail miss (last piece only)

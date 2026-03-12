@@ -33,6 +33,7 @@
 // ========================================
 // --- General Settings ---
 var o2jam_enabled = true;
+var o2jam_isActiveSystem = false;
 var o2jam_debug = false;
 var o2jam_replaceScoreText = true;
 var o2jam_kadeEngineStyle = false; // Whether to use Kade Engine style scoreText or Psych Engine style.
@@ -74,16 +75,27 @@ var o2jam_badHits = 0; // BAD (<=100ms)
  */
 function loadSettings() {
 	var settingsPath:String = 'data/settings.json';
-	if (!FileSystem.exists(Paths.modFolders(settingsPath))) {
-		trace('[O2Jam] settings.json not found, using default values from script');
+	if (!FileSystem.exists(Paths.modFolders(settingsPath)))
 		return;
-	}
-	trace('[O2Jam] settings.json found, loading settings...');
 
 	var value:Dynamic;
 
-	if ((value = getModSetting('scoring_system')) != null)
-		o2jam_enabled = (value == 'O2Jam');
+	if ((value = getModSetting('scoring_system')) != null) {
+		o2jam_isActiveSystem = (value == 'O2Jam');
+		o2jam_enabled = o2jam_isActiveSystem;
+	}
+
+	if (!o2jam_enabled) {
+		var cmpEnabled:Dynamic = getModSetting('scoring_showComparison');
+		var cmpShow:Dynamic = getModSetting('cmp_showO2Jam');
+		if (cmpEnabled == true && cmpShow == true)
+			o2jam_enabled = true;
+	}
+
+	if (!o2jam_enabled)
+		return;
+
+	trace('[O2Jam] settings.json found, loading settings...');
 
 	if ((value = getModSetting('scoring_debug')) != null)
 		o2jam_debug = value;
@@ -606,7 +618,7 @@ function onBeatHit() {
 }
 
 function preUpdateScore(miss:Bool) {
-	if (o2jam_enabled && o2jam_replaceScoreText) {
+	if (o2jam_isActiveSystem && o2jam_replaceScoreText) {
 		if (!miss)
 			game.doScoreBop();
 		return Function_Stop;
@@ -615,12 +627,14 @@ function preUpdateScore(miss:Bool) {
 }
 
 function onUpdateScore(miss:Bool) {
-	if (o2jam_enabled && o2jam_replaceScoreText)
+	if (o2jam_isActiveSystem && o2jam_replaceScoreText)
 		o2jam_updateScoreText();
 }
 
 function goodNoteHit(note:Note) {
 	if (note.isSustainNote || !note.mustPress)
+		return;
+	if (!o2jam_enabled)
 		return;
 
 	// Calculate timing offset
@@ -638,6 +652,8 @@ function goodNoteHit(note:Note) {
 
 function noteMiss(note:Note) {
 	if (note.isSustainNote || !note.mustPress)
+		return;
+	if (!o2jam_enabled)
 		return;
 
 	// Process the miss
