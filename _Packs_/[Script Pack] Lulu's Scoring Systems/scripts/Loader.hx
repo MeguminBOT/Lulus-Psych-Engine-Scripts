@@ -144,6 +144,7 @@ function loadExtra(filename:String) {
 function loadExtraLua(filename:String) {
 	var path = Paths.modFolders('scripts/extras/' + filename);
 	if (FileSystem.exists(path)) {
+		addHaxeLibrary('FunkinLua', 'psychlua');
 		new FunkinLua(path);
 		trace('[Loader] Loaded extra (Lua): ' + filename);
 	} else {
