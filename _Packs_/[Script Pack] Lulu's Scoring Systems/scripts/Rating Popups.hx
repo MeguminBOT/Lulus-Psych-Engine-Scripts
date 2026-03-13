@@ -29,7 +29,7 @@
 			Place a Sparrow atlas spritesheet in: mods/YourMod/images/ratings/[system]/
 			Filename must be: spritesheet.png + spritesheet.xml
 			Example: images/ratings/ruthless/spritesheet.png
-			         images/ratings/ruthless/spritesheet.xml
+					 images/ratings/ruthless/spritesheet.xml
 
 			Animation prefixes in the XML must match the judgement names.
 			Example prefixes for Ruthless: flawless, precise, great, good, ok, sloppy, barely
@@ -69,15 +69,16 @@
 
 			Fields:
 				antialiasing  - Default antialiasing for this system's popups.
-				                Only used when the setting is set to "Theme Default".
+								Only used when the setting is set to "Theme Default".
 				offsets       - Per-judgement [x, y] position adjustments.
-				                Applied after positioning. Works for both
-				                individual images and spritesheet animations.
+								Applied after positioning. Works for both
+								individual images and spritesheet animations.
 
 		Place this script in 'mods/YourMod/scripts/' or 'mods/scripts/'.
 
 	Script by AutisticLulu.
  */
+
 import tjson.TJSON;
 import Reflect;
 
@@ -133,10 +134,14 @@ function loadSettings() {
  */
 function resolveAntialiasing():Bool {
 	switch (ratingPopups_antialiasing) {
-		case 'Theme Default': return ratingPopups_themeAA;
-		case 'On': return true;
-		case 'Off': return false;
-		default: return ClientPrefs.data.antialiasing;
+		case 'Theme Default':
+			return ratingPopups_themeAA;
+		case 'On':
+			return true;
+		case 'Off':
+			return false;
+		default:
+			return ClientPrefs.data.antialiasing;
 	}
 }
 
@@ -361,7 +366,11 @@ function getIIDXJudgementFromWindows(offsetMs:Float):String {
 		return 'great';
 	if (offsetMs <= fn('good'))
 		return 'good';
-	return 'bad';
+	if (offsetMs <= fn('bad'))
+		return 'bad';
+	if (offsetMs <= fn('awful'))
+		return 'awful';
+	return 'poor';
 }
 
 /**
@@ -399,11 +408,16 @@ function getQuaverJudgementFromWindows(offsetMs:Float):String {
  */
 function getAssetName(normalized:String):String {
 	switch (normalized) {
-		case '300': return 'threehundred';
-		case '200': return 'twohundred';
-		case '100': return 'hundred';
-		case '50': return 'fifty';
-		default: return normalized;
+		case '300':
+			return 'threehundred';
+		case '200':
+			return 'twohundred';
+		case '100':
+			return 'hundred';
+		case '50':
+			return 'fifty';
+		default:
+			return normalized;
 	}
 }
 
@@ -454,7 +468,7 @@ function loadSpritesheet() {
 	var xmlPath = Paths.modFolders('images/' + sheetPath + '.xml');
 	if (!FileSystem.exists(xmlPath)) {
 		debug('No spritesheet XML at: ' + xmlPath);
-		return; 
+		return;
 	}
 
 	ratingPopups_spritesheetFrames = Paths.getSparrowAtlas(sheetPath);
@@ -467,16 +481,26 @@ function loadSpritesheet() {
  */
 function getSystemJudgements():Array<String> {
 	switch (ratingPopups_activeSystem) {
-		case 'Wife3': return ['marvelous', 'perfect', 'great', 'good', 'bad'];
-		case 'OsuMania': return ['max', '300', '200', '100', '50'];
-		case 'OsuManiaV2': return ['max', '300', '200', '100', '50'];
-		case 'ITG': return ['fantastic', 'excellent', 'great', 'decent', 'wayoff'];
-		case 'Ruthless': return ['flawless', 'precise', 'great', 'good', 'ok', 'sloppy', 'barely'];
-		case 'O2Jam': return ['cool', 'good', 'bad'];
-		case 'DJMAX': return ['max100', 'max90', 'good', 'bad'];
-		case 'IIDX': return ['pgreat', 'great', 'good', 'bad'];
-		case 'Quaver': return ['marvelous', 'perfect', 'great', 'good'];
-		default: return ['sick', 'good', 'bad', 'shit'];
+		case 'Wife3':
+			return ['marvelous', 'perfect', 'great', 'good', 'bad'];
+		case 'OsuMania':
+			return ['max', '300', '200', '100', '50'];
+		case 'OsuManiaV2':
+			return ['max', '300', '200', '100', '50'];
+		case 'ITG':
+			return ['fantastic', 'excellent', 'great', 'decent', 'wayoff'];
+		case 'Ruthless':
+			return ['flawless', 'precise', 'great', 'good', 'ok', 'sloppy', 'barely'];
+		case 'O2Jam':
+			return ['cool', 'good', 'bad'];
+		case 'DJMAX':
+			return ['max100', 'max90', 'good', 'bad'];
+		case 'IIDX':
+			return ['pgreat', 'great', 'good', 'bad'];
+		case 'Quaver':
+			return ['marvelous', 'perfect', 'great', 'good'];
+		default:
+			return ['sick', 'good', 'bad', 'shit'];
 	}
 }
 
@@ -520,7 +544,8 @@ function spawnPopup(judgement:String) {
 	// Clear old popups when comboStacking is disabled
 	if (!ClientPrefs.data.comboStacking && game.comboGroup.members.length > 0) {
 		for (spr in game.comboGroup) {
-			if (spr == null) continue;
+			if (spr == null)
+				continue;
 			game.comboGroup.remove(spr);
 			spr.destroy();
 		}

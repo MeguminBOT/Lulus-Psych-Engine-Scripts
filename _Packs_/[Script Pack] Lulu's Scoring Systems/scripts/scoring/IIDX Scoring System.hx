@@ -5,11 +5,11 @@
 		Can be used with Custom HUDs in Lua/HScript by using the provided global callbacks.
 
 		Features:
-			- IIDX judgement windows (PC normalized): PGREAT (±16.67ms), GREAT (±33.33ms), GOOD (±100ms), BAD (±180ms), POOR (miss)
-			- EX Score: 2 per PGREAT, 1 per GREAT, 0 for GOOD/BAD/POOR
+			- IIDX judgement windows (PC normalized): PGREAT (±16.67ms), GREAT (±33.33ms), GOOD (±66.67ms), BAD (±100ms), AWFUL (±180ms), POOR (miss)
+			- EX Score: 2 per PGREAT, 1 per GREAT, 0 for GOOD/BAD/AWFUL/POOR
 			- EX Rate = EX Score / (2 × total notes) × 100
 			- IIDX grade thresholds: AAA (8/9), AA (7/9), A (6/9), B (5/9), C (4/9), D (3/9), E (2/9), F (<2/9)
-			- PGREAT, GREAT, and GOOD maintain combo; BAD and POOR break combo
+			- PGREAT, GREAT, and GOOD maintain combo; BAD, AWFUL and POOR break combo
 			- *Optional* Kade Engine style score text formatting
 			- Settings.json support (when using "Lulu's Scoring Systems" pack)
 				- Configure settings through the mod settings menu
@@ -19,14 +19,16 @@
 			Timing windows derived from arcade frame timings converted to milliseconds.
 			PGREAT = 1 frame at 60fps = ±16.67ms
 			GREAT  = 2 frames at 60fps = ±33.33ms
-			GOOD   = ±100ms
-			BAD    = ±180ms
-			POOR   = Beyond BAD window or complete miss
+			GOOD   = 4 frames at 60fps = ±66.67ms
+			BAD    = ±100ms
+			AWFUL  = ±180ms
+			POOR   = Beyond AWFUL window or complete miss
 
 			- PGREAT: Perfect timing. +2 EX. Combo continues.
 			- GREAT:  Slightly off. +1 EX. Combo continues.
 			- GOOD:   Noticeably off. +0 EX. Combo continues.
-			- BAD:    Greatly off. +0 EX. Combo breaks.
+			- BAD:    Off. +0 EX. Combo breaks.
+			- AWFUL:  Greatly off. +0 EX. Combo breaks.
 			- POOR:   Complete miss. +0 EX. Combo breaks.
 
 		Place this script in 'mods/YourMod/scripts/' or 'mods/scripts/'.
@@ -46,8 +48,9 @@ var iidx_kadeEngineStyle = false;
 // --- Timing Windows (PC normalized - fixed) ---
 var iidx_pgreatWindow = 16.67; // PGREAT: ±16.67ms (1 frame @ 60fps)
 var iidx_greatWindow = 33.33; // GREAT:  ±33.33ms (2 frames @ 60fps)
-var iidx_goodWindow = 100.0; // GOOD:   ±100ms
-var iidx_badWindow = 180.0; // BAD:    ±180ms (beyond = POOR/miss)
+var iidx_goodWindow = 66.67; // GOOD:   ±66.67ms (4 frames @ 60fps)
+var iidx_badWindow = 100.0; // BAD:    ±100ms
+var iidx_awfulWindow = 180.0; // AWFUL:  ±180ms (beyond = POOR/miss)
 // --- Score State (Do Not Modify) ---
 var iidx_combo = 0;
 var iidx_maxCombo = 0;
@@ -61,6 +64,7 @@ var iidx_pgreatHits = 0;
 var iidx_greatHits = 0;
 var iidx_goodHits = 0;
 var iidx_badHits = 0;
+var iidx_awfulHits = 0;
 
 // ========================================
 // SETTINGS LOADER
@@ -132,10 +136,11 @@ function debug(message:String, ?color:FlxColor = null) {
  * Beatmania IIDX timing windows (PC normalized):
  *   PGREAT: ±16.67ms
  *   GREAT:  ±33.33ms
- *   GOOD:   ±100ms
- *   BAD:    ±180ms
+ *   GOOD:   ±66.67ms
+ *   BAD:    ±100ms
+ *   AWFUL:  ±180ms
  *
- * @param judgement Judgement name: 'pgreat', 'great', 'good', 'bad'
+ * @param judgement Judgement name: 'pgreat', 'great', 'good', 'bad', 'awful'
  * @return Hit window in milliseconds
  */
 function iidx_getHitWindow(judgement:String):Float {
@@ -148,6 +153,8 @@ function iidx_getHitWindow(judgement:String):Float {
 			return iidx_goodWindow;
 		case 'bad':
 			return iidx_badWindow;
+		case 'awful':
+			return iidx_awfulWindow;
 		default:
 			return 0.0;
 	}
@@ -156,7 +163,7 @@ function iidx_getHitWindow(judgement:String):Float {
 /**
  * Determines the IIDX judgement for a given timing offset.
  * @param offsetMs Timing offset in milliseconds (absolute value used for judgement)
- * @return Judgement string: 'pgreat', 'great', 'good', 'bad', 'poor'
+ * @return Judgement string: 'pgreat', 'great', 'good', 'bad', 'awful', 'poor'
  */
 function iidx_getJudgement(offsetMs:Float):String {
 	var absMs = Math.abs(offsetMs);
@@ -169,6 +176,8 @@ function iidx_getJudgement(offsetMs:Float):String {
 		return 'good';
 	if (absMs <= iidx_badWindow)
 		return 'bad';
+	if (absMs <= iidx_awfulWindow)
+		return 'awful';
 	return 'poor';
 }
 
@@ -182,7 +191,7 @@ function iidx_getJudgement(offsetMs:Float):String {
  * Beatmania IIDX EX Score:
  *   EX Score = 2 × PGREAT + 1 × GREAT
  *   PGREAT, GREAT, GOOD maintain combo.
- *   BAD breaks combo.
+ *   BAD and AWFUL break combo.
  *
  * @param offsetMs Timing offset in milliseconds
  */
@@ -200,15 +209,19 @@ function processHit(offsetMs:Float) {
 		iidx_greatHits = iidx_greatHits + 1;
 		setVar('iidx_greatHits', iidx_greatHits);
 	} else if (judgement == 'good') {
-		// GOOD: +0 EX, combo continues
 		iidx_combo = iidx_combo + 1;
 		iidx_goodHits = iidx_goodHits + 1;
 		setVar('iidx_goodHits', iidx_goodHits);
-	} else {
+	} else if (judgement == 'bad') {
 		// BAD: +0 EX, combo breaks
 		iidx_combo = 0;
 		iidx_badHits = iidx_badHits + 1;
 		setVar('iidx_badHits', iidx_badHits);
+	} else {
+		// AWFUL: +0 EX, combo breaks
+		iidx_combo = 0;
+		iidx_awfulHits = iidx_awfulHits + 1;
+		setVar('iidx_awfulHits', iidx_awfulHits);
 	}
 
 	// Track max combo
@@ -248,15 +261,35 @@ function iidx_setEnabled(enabled:Bool) {
 }
 
 /**
- * Returns the current IIDX EX Rate as a percentage.
+ * Returns the current IIDX EX Rate as a percentage (authentic).
  * EX Rate = EX Score / (2 × total notes) × 100
+ * Used for grade calculation.
  * @return EX Rate percentage (0-100)
  */
-function iidx_getAccuracy():Float {
+function iidx_getExRate():Float {
 	if (iidx_totalNotes <= 0)
 		return 0.0;
 	var exMax = iidx_totalNotes * 2;
 	var percent = (iidx_exScore / exMax) * 100.0;
+	if (percent < 0.0)
+		percent = 0.0;
+	if (percent > 100.0)
+		percent = 100.0;
+	return percent;
+}
+
+/**
+ * Returns weighted judgement accuracy as a percentage.
+ * Uses per-judgement weights (Psych Engine ratingMod style) to produce
+ * accuracy values comparable to Psych Engine's built-in accuracy.
+ *   PGREAT = 1.0, GREAT = 0.75, GOOD = 0.5, BAD = 0.25, AWFUL = 0.0, POOR = 0.0
+ * @return Weighted accuracy percentage (0-100)
+ */
+function iidx_getAccuracy():Float {
+	if (iidx_totalNotes <= 0)
+		return 0.0;
+	var weightedSum = (iidx_pgreatHits * 1.0) + (iidx_greatHits * 0.75) + (iidx_goodHits * 0.5) + (iidx_badHits * 0.25);
+	var percent = (weightedSum / iidx_totalNotes) * 100.0;
 	if (percent < 0.0)
 		percent = 0.0;
 	if (percent > 100.0)
@@ -308,7 +341,7 @@ function iidx_getGrade(percent:Float):String {
 /**
  * Gets the FC (Full Combo) tier based on judgement counts and misses.
  *   PFC  = Perfect Full Combo (all PGREATs, no misses)
- *   FC   = Full Combo (no BADs or POORs; PGREATs + GREATs + GOODs only)
+ *   FC   = Full Combo (no BADs, AWFULs or POORs; PGREATs + GREATs + GOODs only)
  *   SDCB = <10 combo breaks (Single Digit Combo Break)
  *   Clear = 10+ combo breaks
  *
@@ -316,7 +349,7 @@ function iidx_getGrade(percent:Float):String {
  */
 function iidx_getRatingFC():String {
 	var misses = game.songMisses;
-	var comboBreaks = misses + iidx_badHits; // BAD and POOR both break combo
+	var comboBreaks = misses + iidx_badHits + iidx_awfulHits; // BAD, AWFUL and POOR all break combo
 
 	if (comboBreaks > 0) {
 		if (comboBreaks < 10)
@@ -324,11 +357,11 @@ function iidx_getRatingFC():String {
 		return 'Clear';
 	}
 
-	// No BADs or POORs
+	// No BADs, AWFULs or POORs
 	if (iidx_greatHits == 0 && iidx_goodHits == 0)
 		return 'PFC'; // All PGREATs
 
-	return 'FC'; // Full Combo (PGREATs + GREATs + GOODs, no BADs/POORs)
+	return 'FC'; // Full Combo (PGREATs + GREATs + GOODs, no BADs/AWFULs/POORs)
 }
 
 /**
@@ -349,7 +382,7 @@ function iidx_getGreatHits():Int {
 
 /**
  * Returns the total number of GOOD hits.
- * @return Count of GOOD judgements (<=100ms)
+ * @return Count of GOOD judgements (<=66.67ms)
  */
 function iidx_getGoodHits():Int {
 	return iidx_goodHits;
@@ -357,10 +390,18 @@ function iidx_getGoodHits():Int {
 
 /**
  * Returns the total number of BAD hits.
- * @return Count of BAD judgements (<=180ms)
+ * @return Count of BAD judgements (<=100ms)
  */
 function iidx_getBadHits():Int {
 	return iidx_badHits;
+}
+
+/**
+ * Returns the total number of AWFUL hits.
+ * @return Count of AWFUL judgements (<=180ms)
+ */
+function iidx_getAwfulHits():Int {
+	return iidx_awfulHits;
 }
 
 /**
@@ -392,6 +433,7 @@ function iidx_resetScoring() {
 	iidx_greatHits = 0;
 	iidx_goodHits = 0;
 	iidx_badHits = 0;
+	iidx_awfulHits = 0;
 	debug('IIDX scoring reset');
 
 	if (iidx_replaceScoreText)
@@ -440,7 +482,7 @@ function iidx_getKadeEngineStyle():Bool {
 
 /**
  * Updates the score text with IIDX EX Score information.
- * Shows EX Score as the primary metric with EX Rate as accuracy.
+ * Shows EX Score as the primary metric, grade from EX Rate, and weighted accuracy.
  */
 function iidx_updateScoreText() {
 	if (!iidx_enabled || !iidx_replaceScoreText)
@@ -452,8 +494,9 @@ function iidx_updateScoreText() {
 	var scoreText = '';
 
 	if (hasHitNotes) {
-		var exRate = iidx_getAccuracy();
-		var formattedPercent = iidx_formatPercent(exRate);
+		var exRate = iidx_getExRate();
+		var accuracy = iidx_getAccuracy();
+		var formattedPercent = iidx_formatPercent(accuracy);
 		var exMax = iidx_totalNotes * 2;
 		var grade = iidx_getGrade(exRate);
 		var ratingFC = iidx_getRatingFC();
@@ -489,6 +532,7 @@ function iidx_updateScoreText() {
 function registerCallbacks() {
 	var callbacks:Array<Dynamic> = [
 		['iidx_getAccuracy', iidx_getAccuracy],
+		['iidx_getExRate', iidx_getExRate],
 		['iidx_getScore', iidx_getScore],
 		['iidx_getGrade', iidx_getGrade],
 		['iidx_getCombo', iidx_getCombo],
@@ -496,6 +540,7 @@ function registerCallbacks() {
 		['iidx_getGreatHits', iidx_getGreatHits],
 		['iidx_getGoodHits', iidx_getGoodHits],
 		['iidx_getBadHits', iidx_getBadHits],
+		['iidx_getAwfulHits', iidx_getAwfulHits],
 		['iidx_getTotalNotes', iidx_getTotalNotes],
 		['iidx_formatPercent', iidx_formatPercent],
 		['iidx_getRatingFC', iidx_getRatingFC],

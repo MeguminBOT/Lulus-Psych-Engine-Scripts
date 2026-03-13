@@ -1,7 +1,7 @@
 --[[
 	>>> Judgement Counter for Psych Engine
 		Lua script that displays a judgment counter showing hit accuracy statistics.
-		Automatically detects the active scoring system (Wife3, osu!mania, ITG, or Psych)
+		Automatically detects the active scoring system (Wife3, osu!mania, ITG, IIDX, or Psych)
 		and displays the appropriate judgment labels and colors.
 
 		Features:
@@ -12,6 +12,7 @@
 			- Wife3: Marvelous, Perfect, Great, Good, Bad, Miss
 			- osu!mania: MAX, 300, 200, 100, 50, Miss
 			- ITG: Fantastic, Excellent, Great, Decent, Way Off, Miss
+			- IIDX: PGreat, Great, Good, Bad, Awful, Miss
 			- Psych: Sick, Good, Bad, Shit, Miss (fallback)
 
 		Place this script in 'mods/YourMod/scripts/' or 'mods/scripts/'.
@@ -63,11 +64,12 @@ local judgementTexts = {}
 local counterEnabled = true
 
 -- Scoring system detection
-local scoringSystem = 'Psych' -- 'Psych', 'Wife3', 'OsuMania', 'ITG', or 'Ruthless'
+local scoringSystem = 'Psych' -- 'Psych', 'Wife3', 'OsuMania', 'ITG', 'Ruthless', or 'IIDX'
 local wife3Available = false
 local osuAvailable = false
 local itgAvailable = false
 local ruthlessAvailable = false
+local iidxAvailable = false
 
 -- ========================================
 -- HELPER FUNCTIONS
@@ -97,6 +99,12 @@ local function checkRuthlessAvailability()
     return ruthlessAvailable
 end
 
+-- Check if IIDX scoring system is available
+local function checkIIDXAvailability()
+    iidxAvailable = (getVar('iidx_enabled') ~= nil and getVar('iidx_enabled') == true)
+    return iidxAvailable
+end
+
 -- Detect active scoring system
 local function detectScoringSystem()
     local setting = getModSetting('scoring_system')
@@ -108,6 +116,7 @@ local function detectScoringSystem()
     checkOsuAvailability()
     checkITGAvailability()
     checkRuthlessAvailability()
+    checkIIDXAvailability()
 
     -- Fallback detection if settings aren't available
     if setting == nil then
@@ -119,6 +128,8 @@ local function detectScoringSystem()
             scoringSystem = 'ITG'
         elseif ruthlessAvailable then
             scoringSystem = 'Ruthless'
+        elseif iidxAvailable then
+            scoringSystem = 'IIDX'
         else
             scoringSystem = 'Psych'
         end
@@ -127,7 +138,7 @@ end
 
 -- Get judgment counts based on active scoring system
 local function getJudgmentCounts()
-    if scoringSystem == 'Wife3' or scoringSystem == 'OsuMania' or scoringSystem == 'ITG' or scoringSystem == 'Ruthless' then
+    if scoringSystem == 'Wife3' or scoringSystem == 'OsuMania' or scoringSystem == 'ITG' or scoringSystem == 'Ruthless' or scoringSystem == 'IIDX' then
         if scoringSystem == 'Ruthless' then
             return {
                 { count = tier1Count },
@@ -137,6 +148,15 @@ local function getJudgmentCounts()
                 { count = tier5Count },
                 { count = tier6Count },
                 { count = tier7Count },
+                { count = missCount }
+            }
+        elseif scoringSystem == 'IIDX' then
+            return {
+                { count = tier1Count },
+                { count = tier2Count },
+                { count = tier3Count },
+                { count = tier4Count },
+                { count = tier5Count },
                 { count = missCount }
             }
         else
@@ -199,6 +219,15 @@ local function getJudgmentDefinitions()
             { name = 'tier6', label = 'Sloppy',   color = 'FF8800' },
             { name = 'tier7', label = 'Barely',   color = 'FF00FF' },
             { name = 'miss',  label = 'Miss',     color = 'FF0000' }
+        }
+    elseif scoringSystem == 'IIDX' then
+        return {
+            { name = 'tier1', label = 'PGreat', color = '00FFFF' },
+            { name = 'tier2', label = 'Great',  color = 'FFD700' },
+            { name = 'tier3', label = 'Good',   color = '00FF00' },
+            { name = 'tier4', label = 'Bad',    color = '0088FF' },
+            { name = 'tier5', label = 'Awful',  color = 'FF00FF' },
+            { name = 'miss',  label = 'Miss',   color = 'FF0000' }
         }
     else
         -- Psych Engine default (4 hit windows)
@@ -318,6 +347,19 @@ local function classifyHit(noteDiff)
             return 6 -- Sloppy
         else
             return 7 -- Barely
+        end
+    elseif scoringSystem == 'IIDX' then
+        -- IIDX windows (16.67, 33.33, 66.67, 100, 180)
+        if absOffset <= 16.67 then
+            return 1 -- PGreat
+        elseif absOffset <= 33.33 then
+            return 2 -- Great
+        elseif absOffset <= 66.67 then
+            return 3 -- Good
+        elseif absOffset <= 100 then
+            return 4 -- Bad
+        else
+            return 5 -- Awful
         end
     else
         -- Wife3 windows

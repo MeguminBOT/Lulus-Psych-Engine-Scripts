@@ -56,7 +56,7 @@ Also includes:
 | **Ruthless** | Custom | 1,000,000 | Linear curve | Perfect Window 0–25ms | No (bonus multiplier) | — | — | No |
 | **O2Jam** | O2Jam | Unlimited | Weighted hit ratio | BPM scaling toggle | Yes (score = weight × combo) | Yes | Yes | No |
 | **DJMAX** | DJMAX RESPECT V | 1,000,000 | Weighted average | No | No | Yes | Yes | No |
-| **IIDX** | beatmania IIDX | EX Score | EX Rate | No | No | Yes | Yes | No |
+| **IIDX** | beatmania IIDX | EX Score | EX Rate | No | No | Yes | No | No |
 | **Quaver** | Quaver | 1,000,000 | Weighted average | No | No | Yes | Yes | No |
 
 ---
@@ -795,8 +795,9 @@ The **EX Score** system from **beatmania IIDX**, using frame-based timing window
 |-----------|--------|-------------------------|
 | PGREAT | ±16.67ms | 1 frame |
 | GREAT | ±33.33ms | 2 frames |
-| GOOD | ±100ms | — |
-| BAD | ±180ms | — |
+| GOOD | ±66.67ms | 4 frames |
+| BAD | ±100ms | — |
+| AWFUL | ±180ms | — |
 | POOR | > 180ms (miss) | — |
 
 #### Score Formula
@@ -841,6 +842,34 @@ EX Rate % =  ──────────────── × 100
 
 </details>
 
+> Grade thresholds use the authentic EX Rate above. For the displayed accuracy percentage, a **custom weighted judgement accuracy** is used instead — beatmania IIDX does not have a native accuracy percentage, so this was built to produce values comparable to Psych Engine's built-in accuracy system.
+
+#### Weighted Accuracy Formula (displayed %, non-authentic)
+
+$$
+\text{Accuracy \%} = \frac{1.0 \cdot N_{\text{PGREAT}} + 0.75 \cdot N_{\text{GREAT}} + 0.5 \cdot N_{\text{GOOD}} + 0.25 \cdot N_{\text{BAD}}}{N} \times 100
+$$
+
+<details>
+<summary>📋 Copy-pasteable formula</summary>
+
+```
+Weighted Sum = 1.0 × PGREAT + 0.75 × GREAT + 0.5 × GOOD + 0.25 × BAD + 0 × AWFUL + 0 × POOR
+
+Accuracy % = Weighted Sum / TotalNotes × 100
+```
+
+</details>
+
+| Judgement | Accuracy Weight |
+|-----------|----------------|
+| PGREAT | 1.0 |
+| GREAT | 0.75 |
+| GOOD | 0.5 |
+| BAD | 0.25 |
+| AWFUL | 0.0 |
+| POOR | 0.0 |
+
 #### Grade Thresholds
 
 Grades are based on **ninths** of the maximum EX Score:
@@ -861,7 +890,7 @@ Grades are based on **ninths** of the maximum EX Score:
 | Tier | Criteria |
 |------|----------|
 | PFC | All PGREAT, no misses |
-| FC | No BAD or POOR |
+| FC | No BAD, AWFUL or POOR |
 | SDCB | < 10 combo breaks |
 | Clear | ≥ 10 combo breaks |
 
@@ -869,7 +898,7 @@ Grades are based on **ninths** of the maximum EX Score:
 
 | Maintains Combo | Breaks Combo |
 |----------------|--------------|
-| PGREAT, GREAT, GOOD | BAD, POOR |
+| PGREAT, GREAT, GOOD | BAD, AWFUL, POOR |
 
 ---
 
@@ -968,7 +997,7 @@ All values in milliseconds (±ms from perfect). Default settings for all systems
 | **Ruthless** (10ms) | ±10 (Flaw) | ±20 (Prec) | ±30 (Great) | ±40 (Good) | ±50–100 | > 100 |
 | **O2Jam** (fixed) | ±33 (COOL) | ±67 (GOOD) | ±100 (BAD) | — | — | > 100 |
 | **DJMAX** | ±16 (MAX100) | ±33 (MAX90) | ±66 (GOOD) | ±100 (BAD) | — | > 100 |
-| **IIDX** | ±16.67 (PGR) | ±33.33 (GR) | ±100 (GOOD) | ±180 (BAD) | — | > 180 |
+| **IIDX** | ±16.67 (PGR) | ±33.33 (GR) | ±66.67 (GOOD) | ±100 (BAD) | ±180 (AWFUL) | > 180 |
 | **Quaver** | ±18 (Marv) | ±43 (Perf) | ±76 (Great) | ±106 (Good) | — | > 106 |
 
 ### Strictest → Most Lenient (Best Judgement Window)

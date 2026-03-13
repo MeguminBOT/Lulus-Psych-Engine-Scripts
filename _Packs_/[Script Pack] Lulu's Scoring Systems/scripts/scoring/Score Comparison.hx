@@ -34,11 +34,11 @@ var cmp_hits16 = 0; // <=16ms  (IIDX PGreat, osu MAX, DJMAX MAX100%)
 var cmp_hits22 = 0; // <=22ms  (Wife3 Marvelous, ITG Fantastic, Quaver Marvelous)
 var cmp_hits33 = 0; // <=33ms  (IIDX Great, DJMAX MAX90%, O2Jam Cool)
 var cmp_hits45 = 0; // <=45ms  (Wife3 Perfect, ITG Excellent, osu 300, Quaver Perfect)
-var cmp_hits75 = 0; // <=75ms  (osu 200, Quaver Great, Ruthless Sloppy)
+var cmp_hits75 = 0; // <=75ms  (osu 200, Quaver Great, Ruthless Sloppy, IIDX Good)
 var cmp_hits90 = 0; // <=90ms  (Wife3 Great, ITG Great)
-var cmp_hits100 = 0; // <=100ms (IIDX Good, O2Jam Bad, DJMAX Bad, Ruthless Barely)
+var cmp_hits100 = 0; // <=100ms (IIDX Bad, O2Jam Bad, DJMAX Bad, Ruthless Barely)
 var cmp_hits135 = 0; // <=135ms (Wife3 Good, ITG Decent, osu 100)
-var cmp_hits180 = 0; // <=180ms (Wife3 Bad, ITG Way Off, IIDX Bad)
+var cmp_hits180 = 0; // <=180ms (Wife3 Bad, ITG Way Off, IIDX Awful)
 var cmp_hits180plus = 0; // >180ms
 var cmp_misses = 0;
 
@@ -78,6 +78,7 @@ var cmp_djmax_getGrade = null;
 var cmp_djmax_getRatingFC = null;
 var cmp_djmax_formatPercent = null;
 var cmp_iidx_getAccuracy = null;
+var cmp_iidx_getExRate = null;
 var cmp_iidx_getScore = null;
 var cmp_iidx_getGrade = null;
 var cmp_iidx_getRatingFC = null;
@@ -287,9 +288,10 @@ function cmp_updateDisplay() {
 	// IIDX
 	if (cmp_showIIDX) {
 		var iidxAcc = cmp_iidx_getAccuracy();
+		var iidxExRate = cmp_iidx_getExRate();
 		var iidxHasData = (iidxAcc > 0 || game.totalPlayed > 0);
 		var iidxAccStr = iidxHasData ? cmp_iidx_formatPercent(iidxAcc) : '?';
-		var iidxGrade = iidxHasData ? cmp_iidx_getGrade(iidxAcc) : '?';
+		var iidxGrade = iidxHasData ? cmp_iidx_getGrade(iidxExRate) : '?';
 		var iidxScore = cmp_iidx_getScore();
 		var iidxFC = iidxHasData ? cmp_iidx_getRatingFC() : '';
 		lines = lines + cmp_formatRow('BeatMania IIDX', 'EX ' + iidxScore, iidxAccStr, iidxGrade, iidxFC) + '\n';
@@ -370,6 +372,7 @@ function onCreatePost() {
 	cmp_djmax_formatPercent = getVar('djmax_formatPercent');
 
 	cmp_iidx_getAccuracy = getVar('iidx_getAccuracy');
+	cmp_iidx_getExRate = getVar('iidx_getExRate');
 	cmp_iidx_getScore = getVar('iidx_getScore');
 	cmp_iidx_getGrade = getVar('iidx_getGrade');
 	cmp_iidx_getRatingFC = getVar('iidx_getRatingFC');
@@ -389,15 +392,51 @@ function onCreatePost() {
 
 	// Verify callbacks are available for shown systems
 	var missingCallbacks = false;
-	if (cmp_showWife3 && cmp_wife3_getAccuracy == null) { trace('[ScoreComparison] WARNING: Wife3 callbacks not found'); cmp_showWife3 = false; missingCallbacks = true; }
-	if (cmp_showOsuMania && cmp_osu_getAccuracy == null) { trace('[ScoreComparison] WARNING: osu!mania callbacks not found'); cmp_showOsuMania = false; missingCallbacks = true; }
-	if (cmp_showOsuManiaV2 && cmp_osuv2_getAccuracy == null) { trace('[ScoreComparison] WARNING: osu!mania V2 callbacks not found'); cmp_showOsuManiaV2 = false; missingCallbacks = true; }
-	if (cmp_showITG && cmp_itg_getAccuracy == null) { trace('[ScoreComparison] WARNING: ITG callbacks not found'); cmp_showITG = false; missingCallbacks = true; }
-	if (cmp_showRuthless && cmp_ruthless_getAccuracy == null) { trace('[ScoreComparison] WARNING: Ruthless callbacks not found'); cmp_showRuthless = false; missingCallbacks = true; }
-	if (cmp_showO2Jam && cmp_o2jam_getAccuracy == null) { trace('[ScoreComparison] WARNING: O2Jam callbacks not found'); cmp_showO2Jam = false; missingCallbacks = true; }
-	if (cmp_showDJMAX && cmp_djmax_getAccuracy == null) { trace('[ScoreComparison] WARNING: DJMAX callbacks not found'); cmp_showDJMAX = false; missingCallbacks = true; }
-	if (cmp_showIIDX && cmp_iidx_getAccuracy == null) { trace('[ScoreComparison] WARNING: IIDX callbacks not found'); cmp_showIIDX = false; missingCallbacks = true; }
-	if (cmp_showQuaver && cmp_quaver_getAccuracy == null) { trace('[ScoreComparison] WARNING: Quaver callbacks not found'); cmp_showQuaver = false; missingCallbacks = true; }
+	if (cmp_showWife3 && cmp_wife3_getAccuracy == null) {
+		trace('[ScoreComparison] WARNING: Wife3 callbacks not found');
+		cmp_showWife3 = false;
+		missingCallbacks = true;
+	}
+	if (cmp_showOsuMania && cmp_osu_getAccuracy == null) {
+		trace('[ScoreComparison] WARNING: osu!mania callbacks not found');
+		cmp_showOsuMania = false;
+		missingCallbacks = true;
+	}
+	if (cmp_showOsuManiaV2 && cmp_osuv2_getAccuracy == null) {
+		trace('[ScoreComparison] WARNING: osu!mania V2 callbacks not found');
+		cmp_showOsuManiaV2 = false;
+		missingCallbacks = true;
+	}
+	if (cmp_showITG && cmp_itg_getAccuracy == null) {
+		trace('[ScoreComparison] WARNING: ITG callbacks not found');
+		cmp_showITG = false;
+		missingCallbacks = true;
+	}
+	if (cmp_showRuthless && cmp_ruthless_getAccuracy == null) {
+		trace('[ScoreComparison] WARNING: Ruthless callbacks not found');
+		cmp_showRuthless = false;
+		missingCallbacks = true;
+	}
+	if (cmp_showO2Jam && cmp_o2jam_getAccuracy == null) {
+		trace('[ScoreComparison] WARNING: O2Jam callbacks not found');
+		cmp_showO2Jam = false;
+		missingCallbacks = true;
+	}
+	if (cmp_showDJMAX && cmp_djmax_getAccuracy == null) {
+		trace('[ScoreComparison] WARNING: DJMAX callbacks not found');
+		cmp_showDJMAX = false;
+		missingCallbacks = true;
+	}
+	if (cmp_showIIDX && cmp_iidx_getAccuracy == null) {
+		trace('[ScoreComparison] WARNING: IIDX callbacks not found');
+		cmp_showIIDX = false;
+		missingCallbacks = true;
+	}
+	if (cmp_showQuaver && cmp_quaver_getAccuracy == null) {
+		trace('[ScoreComparison] WARNING: Quaver callbacks not found');
+		cmp_showQuaver = false;
+		missingCallbacks = true;
+	}
 
 	cmp_createDisplay();
 	cmp_updateDisplay();

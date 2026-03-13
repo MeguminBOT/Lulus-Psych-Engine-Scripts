@@ -13,7 +13,7 @@
 			- Ruthless:  flawless, precise, great, good, ok, sloppy, barely
 			- O2Jam:    cool, good, bad
 			- DJMAX:    max100, max90, good, bad
-			- IIDX:     pgreat, great, good, bad
+			- IIDX:     pgreat, great, good, bad, awful
 			- Quaver:   marvelous, perfect, great, good
 
 		Image Paths (Individual Images):
@@ -361,7 +361,9 @@ function getIIDXJudgementFromWindows(offsetMs:Float):String {
 		return 'great';
 	if (offsetMs <= fn('good'))
 		return 'good';
-	return 'bad';
+	if (offsetMs <= fn('bad'))
+		return 'bad';
+	return 'awful';
 }
 
 /**
@@ -474,7 +476,7 @@ function getSystemJudgements():Array<String> {
 		case 'Ruthless': return ['flawless', 'precise', 'great', 'good', 'ok', 'sloppy', 'barely'];
 		case 'O2Jam': return ['cool', 'good', 'bad'];
 		case 'DJMAX': return ['max100', 'max90', 'good', 'bad'];
-		case 'IIDX': return ['pgreat', 'great', 'good', 'bad'];
+		case 'IIDX': return ['pgreat', 'great', 'good', 'bad', 'awful'];
 		case 'Quaver': return ['marvelous', 'perfect', 'great', 'good'];
 		default: return ['sick', 'good', 'bad', 'shit'];
 	}

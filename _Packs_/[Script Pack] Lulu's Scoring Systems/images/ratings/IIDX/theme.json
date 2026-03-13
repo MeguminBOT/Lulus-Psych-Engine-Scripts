@@ -1,9 +1,10 @@
 {
-	"antialiasing": true,
+	"antialiasing": false,
 	"offsets": {
 		"pgreat": [0, 0],
 		"great": [0, 0],
 		"good": [0, 0],
-		"bad": [0, 0]
+		"bad": [0, 0],
+		"awful": [0, 0]
 	}
 }
