@@ -1,7 +1,7 @@
 --[[
 	>>> Judgement Counter for Psych Engine
 		Lua script that displays a judgment counter showing hit accuracy statistics.
-		Automatically detects the active scoring system (Wife3, osu!mania, ITG, IIDX, Quaver, or Psych)
+		Automatically detects the active scoring system (Wife3, osu!mania, ITG, IIDX, DJMAX, Quaver, or Psych)
 		and displays the appropriate judgment labels and colors.
 
 		Features:
@@ -13,6 +13,7 @@
 			- osu!mania: MAX, 300, 200, 100, 50, Miss
 			- ITG: Fantastic, Excellent, Great, Decent, Way Off, Miss
 			- IIDX: PGreat, Great, Good, Bad, Awful, Miss
+			- DJMAX: MAX 100%, MAX 90%, Good, Bad, Miss
 			- Quaver: Marvelous, Perfect, Great, Good, Okay, Miss
 			- Psych: Sick, Good, Bad, Shit, Miss (fallback)
 
@@ -65,12 +66,13 @@ local judgementTexts = {}
 local counterEnabled = true
 
 -- Scoring system detection
-local scoringSystem = 'Psych' -- 'Psych', 'Wife3', 'OsuMania', 'ITG', 'Ruthless', 'IIDX', 'Quaver'
+local scoringSystem = 'Psych' -- 'Psych', 'Wife3', 'OsuMania', 'ITG', 'Ruthless', 'IIDX', 'DJMAX', 'Quaver'
 local wife3Available = false
 local osuAvailable = false
 local itgAvailable = false
 local ruthlessAvailable = false
 local iidxAvailable = false
+local djmaxAvailable = false
 local quaverAvailable = false
 
 -- ========================================
@@ -107,6 +109,12 @@ local function checkIIDXAvailability()
     return iidxAvailable
 end
 
+-- Check if DJMAX scoring system is available
+local function checkDJMAXAvailability()
+    djmaxAvailable = (getVar('djmax_enabled') ~= nil and getVar('djmax_enabled') == true)
+    return djmaxAvailable
+end
+
 -- Check if Quaver scoring system is available
 local function checkQuaverAvailability()
     quaverAvailable = (getVar('quaver_enabled') ~= nil and getVar('quaver_enabled') == true)
@@ -125,6 +133,7 @@ local function detectScoringSystem()
     checkITGAvailability()
     checkRuthlessAvailability()
     checkIIDXAvailability()
+    checkDJMAXAvailability()
     checkQuaverAvailability()
 
     -- Fallback detection if settings aren't available
@@ -139,6 +148,8 @@ local function detectScoringSystem()
             scoringSystem = 'Ruthless'
         elseif iidxAvailable then
             scoringSystem = 'IIDX'
+        elseif djmaxAvailable then
+            scoringSystem = 'DJMAX'
         elseif quaverAvailable then
             scoringSystem = 'Quaver'
         else
@@ -163,6 +174,14 @@ local function getJudgmentCounts()
             { count = tier3Count },
             { count = tier4Count },
             { count = tier5Count },
+            { count = missCount }
+        }
+    elseif scoringSystem == 'DJMAX' then
+        return {
+            { count = tier1Count },
+            { count = tier2Count },
+            { count = tier3Count },
+            { count = tier4Count },
             { count = missCount }
         }
     elseif scoringSystem == 'Wife3' or scoringSystem == 'OsuMania' or scoringSystem == 'ITG' or scoringSystem == 'Ruthless' or scoringSystem == 'IIDX' then
@@ -262,6 +281,14 @@ local function getJudgmentDefinitions()
             { name = 'tier4', label = 'Bad',    color = '0088FF' },
             { name = 'tier5', label = 'Awful',  color = 'FF00FF' },
             { name = 'miss',  label = 'Miss',   color = 'FF0000' }
+        }
+    elseif scoringSystem == 'DJMAX' then
+        return {
+            { name = 'tier1', label = 'MAX 100%', color = '00FFFF' },
+            { name = 'tier2', label = 'MAX 90%',  color = 'FFFF00' },
+            { name = 'tier3', label = 'Good',     color = '00FF00' },
+            { name = 'tier4', label = 'Bad',      color = 'FF8800' },
+            { name = 'miss',  label = 'Miss',     color = 'FF0000' }
         }
     elseif scoringSystem == 'Quaver' then
         return {
@@ -412,6 +439,17 @@ local function classifyHit(noteDiff)
             return 2 -- Good
         else
             return 3 -- Bad
+        end
+    elseif scoringSystem == 'DJMAX' then
+        -- DJMAX windows (MAX100% ≤ 16ms, MAX90% ≤ 33ms, GOOD ≤ 66ms, BAD ≤ 100ms)
+        if absOffset <= 16 then
+            return 1 -- MAX 100%
+        elseif absOffset <= 33 then
+            return 2 -- MAX 90%
+        elseif absOffset <= 66 then
+            return 3 -- Good
+        else
+            return 4 -- Bad
         end
     elseif scoringSystem == 'Quaver' then
         -- Quaver windows (Standard: 18, 43, 76, 106, 127)

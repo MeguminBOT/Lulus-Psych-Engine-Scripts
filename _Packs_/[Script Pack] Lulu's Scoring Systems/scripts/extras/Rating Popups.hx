@@ -420,10 +420,11 @@ function getQuaverJudgementFromWindows(offsetMs:Float):String {
 
 /**
  * Returns an asset-safe name for a judgement.
- * osu!mania's numeric judgements (300, 200, 100, 50) are spelled out
- * to avoid conflicts with Sparrow XML's frame-numbering convention.
+ * Judgements containing numbers are spelled out to avoid conflicts
+ * with Sparrow XML's frame-numbering convention.
  *
- * Mapping: 300 → threehundred, 200 → twohundred, 100 → hundred, 50 → fifty
+ * osu!mania: 300 → threehundred, 200 → twohundred, 100 → hundred, 50 → fifty
+ * DJMAX:     max100 → maxhundred, max90 → maxninety
  *
  * Used for both individual image filenames and spritesheet prefixes.
  *
@@ -440,6 +441,10 @@ function getAssetName(normalized:String):String {
 			return 'hundred';
 		case '50':
 			return 'fifty';
+		case 'max100':
+			return 'maxhundred';
+		case 'max90':
+			return 'maxninety';
 		default:
 			return normalized;
 	}

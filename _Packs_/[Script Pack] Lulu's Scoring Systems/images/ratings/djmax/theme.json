@@ -1,8 +1,8 @@
 {
 	"antialiasing": true,
 	"offsets": {
-		"max100": [0, 0],
-		"max90": [0, 0],
+		"maxhundred": [0, 0],
+		"maxninety": [0, 0],
 		"good": [0, 0],
 		"bad": [0, 0],
 		"miss": [0, 0]
