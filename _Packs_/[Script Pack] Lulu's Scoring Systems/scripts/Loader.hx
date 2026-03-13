@@ -4,18 +4,21 @@
 		this loader reads settings and only loads what's needed:
 		- The active scoring system
 		- Any systems enabled in Score Comparison (if comparison is on)
-		- Rating Popups, Timing Display, Score Comparison (if enabled)
-		- Judgement Counter is a Lua script and loads normally from scripts/
+		- Rating Popups, Timing Display, Judgement Counter, Score Comparison (if enabled)
 
-		All scoring/feature scripts live in scripts/scoring/ to prevent
-		Psych Engine from auto-loading them. This loader is the only
-		HScript in scripts/ and handles dynamic loading via game.initHScript().
+		All scoring system scripts live in scripts/scoring/ to prevent
+		Psych Engine from auto-loading them. Extra feature scripts
+		(Rating Popups, Timing Display, Judgement Counter, Score Comparison)
+		live in scripts/extras/. This loader is the only HScript in
+		scripts/ and handles dynamic loading via game.initHScript()
+		and FunkinLua (for Lua scripts).
 
 	Script by AutisticLulu.
- */
+*/
 
 // Maps scoring system name -> script filename (in scripts/scoring/)
 var loader_scriptMap = null;
+
 // Maps scoring system name -> comparison toggle setting name
 var loader_cmpToggleMap = null;
 
@@ -64,6 +67,10 @@ function onCreate() {
 	if (showTimingDisplay == null)
 		showTimingDisplay = true;
 
+	var showJudgementCounter = getModSetting('scoring_showJudgementCounter');
+	if (showJudgementCounter == null)
+		showJudgementCounter = true;
+
 	// Track which systems to load (avoid duplicates)
 	var systemsToLoad = new haxe.ds.StringMap();
 
@@ -73,7 +80,17 @@ function onCreate() {
 
 	// If Score Comparison is enabled, also load any systems toggled on
 	if (showComparison) {
-		var allSystems = ['Wife3', 'OsuMania', 'OsuManiaV2', 'ITG', 'Ruthless', 'O2Jam', 'DJMAX', 'IIDX', 'Quaver'];
+		var allSystems = [
+			'Wife3',
+			'OsuMania',
+			'OsuManiaV2',
+			'ITG',
+			'Ruthless',
+			'O2Jam',
+			'DJMAX',
+			'IIDX',
+			'Quaver'
+		];
 		for (sys in allSystems) {
 			var toggleName = loader_cmpToggleMap.get(sys);
 			var toggleValue = getModSetting(toggleName);
@@ -85,28 +102,51 @@ function onCreate() {
 	// Load scoring system scripts
 	for (sys in systemsToLoad.keys()) {
 		var scriptFile = loader_scriptMap.get(sys);
-		loadScript(scriptFile);
+		loadScoringSystem(scriptFile);
 	}
 
-	// Load feature scripts
+	// Load extra feature scripts
 	if (showComparison)
-		loadScript('Score Comparison.hx');
+		loadExtra('Score Comparison.hx');
 
 	if (showRatingPopups && activeSystem != 'Psych')
-		loadScript('Rating Popups.hx');
+		loadExtra('Rating Popups.hx');
 
 	if (showTimingDisplay)
-		loadScript('Timing Display.hx');
+		loadExtra('Timing Display.hx');
+
+	if (showJudgementCounter)
+		loadExtraLua('Judgement Counter.lua');
 
 	trace('[Loader] Finished loading scripts for system: ' + activeSystem + (showComparison ? ' (with comparison)' : ''));
 }
 
-function loadScript(filename:String) {
+function loadScoringSystem(filename:String) {
 	var path = Paths.modFolders('scripts/scoring/' + filename);
 	if (FileSystem.exists(path)) {
 		game.initHScript(path);
 		trace('[Loader] Loaded: ' + filename);
 	} else {
 		trace('[Loader] WARNING: Script not found: ' + path);
+	}
+}
+
+function loadExtra(filename:String) {
+	var path = Paths.modFolders('scripts/extras/' + filename);
+	if (FileSystem.exists(path)) {
+		game.initHScript(path);
+		trace('[Loader] Loaded extra: ' + filename);
+	} else {
+		trace('[Loader] WARNING: Extra script not found: ' + path);
+	}
+}
+
+function loadExtraLua(filename:String) {
+	var path = Paths.modFolders('scripts/extras/' + filename);
+	if (FileSystem.exists(path)) {
+		new FunkinLua(path);
+		trace('[Loader] Loaded extra (Lua): ' + filename);
+	} else {
+		trace('[Loader] WARNING: Extra Lua script not found: ' + path);
 	}
 }
