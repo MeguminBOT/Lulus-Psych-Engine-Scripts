@@ -604,6 +604,12 @@ function onCreatePost() {
 		o2jam_updateBPMWindows(Conductor.bpm);
 
 	debug('O2Jam scoring ready');
+
+	if (o2jam_isActiveSystem) {
+		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+		Conductor.safeZoneOffset = o2jam_badWindow * playbackRate;
+		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (badWindow=' + o2jam_badWindow + 'ms)');
+	}
 }
 
 function onBeatHit() {

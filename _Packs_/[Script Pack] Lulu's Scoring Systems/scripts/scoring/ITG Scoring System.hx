@@ -783,6 +783,13 @@ function onCreatePost() {
 	itg_resetScoring();
 
 	debug('Total scoring events: ' + itg_totalNotes + ' | Max score: ' + itg_maxDisplayScore);
+
+	if (itg_isActiveSystem) {
+		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+		var outerWindow = 180.0 * itg_windowScale;
+		Conductor.safeZoneOffset = outerWindow * playbackRate;
+		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (wayoffWindow=' + outerWindow + 'ms)');
+	}
 }
 
 function preUpdateScore(miss:Bool) {

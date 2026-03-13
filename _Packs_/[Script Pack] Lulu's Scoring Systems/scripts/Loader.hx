@@ -14,8 +14,7 @@
 		and FunkinLua (for Lua scripts).
 
 	Script by AutisticLulu.
-*/
-
+ */
 // Maps scoring system name -> script filename (in scripts/scoring/)
 var loader_scriptMap = null;
 

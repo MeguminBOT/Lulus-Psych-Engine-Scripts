@@ -44,9 +44,16 @@
 		"save": "scoring_ratingAntialiasing",
 		"name": "Rating Popup Antialiasing",
 		"type": "string",
-		"description": "Antialiasing mode for custom rating popups.\n\nTheme Default: Uses the value from the theme file (theme.json)\nClientPrefs: Uses your game's antialiasing setting\nOn: Always enabled\nOff: Always disabled",
-		"value": "Theme Default",
-		"options": ["Theme Default", "ClientPrefs", "On", "Off"]
+		"description": "Antialiasing mode for custom rating popups.\n\nClientPrefs: Uses your game's antialiasing setting\nOn: Always enabled\nOff: Always disabled",
+		"value": "ClientPrefs",
+		"options": ["ClientPrefs", "On", "Off"]
+	},
+	{
+		"save": "scoring_useThemeDefaults",
+		"name": "Use Theme Defaults",
+		"type": "bool",
+		"description": "Use theme.json values for rating popup scale and antialiasing\ninstead of the settings above.\n\nWhen enabled, scale and antialiasing are read from:\nimages/ratings/[system]/theme.json",
+		"value": false
 	},
 	{
 		"save": "scoring_showTimingDisplay",
@@ -56,18 +63,148 @@
 		"value": true
 	},
 	{
+		"save": "scoring_showJudgementCounter",
+		"name": "Show Judgement Counter",
+		"type": "bool",
+		"description": "Show a real-time judgement counter displaying hit accuracy statistics\nAutomatically uses labels from the active scoring system",
+		"value": true
+	},
+	{
 		"save": "scoring_kadeEngineStyle",
 		"name": "Use Kade Engine Style",
 		"type": "bool",
-		"description": "Use Kade Engine style score text formatting instead of Psych Engine style\nApplies to both Wife3 and osu!mania scoring systems",
+		"description": "Use Kade Engine style score text formatting instead of Psych Engine style",
 		"value": false
 	},
 	{
 		"save": "scoring_showComparison",
 		"name": "Show Score Comparison",
 		"type": "bool",
-		"description": "Show all scoring systems (Psych, Wife3, osu!mania V1/V2, ITG, Ruthless, O2Jam, DJMAX, IIDX, Quaver) side by side\nUseful for comparing accuracy and score across systems",
+		"description": "Show multiple scoring systems at the same time\nUseful for comparing accuracy and score across systems\n\nAffects performance: Enabling more scoring systems will increase CPU usage",
 		"value": false
+	},
+	{
+		"save": "scoring_debug",
+		"name": "Enable Scoring Debug Output",
+		"type": "bool",
+		"description": "Enable debug output for the active scoring system",
+		"value": false
+	},
+	{
+		"save": "wife3_header",
+		"name": "-WIFE3 SETTINGS-",
+		"type": "string",
+		"description": "Settings specific to the Wife3 (Etterna) scoring system",
+		"value": " ",
+		"options": [" ", " ", " ", " "]
+	},
+	{
+		"save": "wife3_judgePreset",
+		"name": "Judge Preset:",
+		"type": "int",
+		"description": "Select timing difficulty preset:\nJ1 = Easiest (88ms Marvelous window)\nJ4 = Default (22ms Marvelous window)\nJ9 = Hardest/JUSTICE (8.8ms Marvelous window)\n\nLower numbers = easier timing\nHigher numbers = stricter timing",
+		"value": 4,
+		"min": 1,
+		"max": 9
+	},
+	{
+		"save": "wife3_judgeScale",
+		"name": "Judge Scale (Advanced):",
+		"type": "float",
+		"description": "Custom timing window scale (overrides preset if set)\n4.0 = J1 (88ms), 1.0 = J4 (22ms), 0.4 = J9 (8.8ms)\n\nExample: 0.7 = J4.5 (15.4ms)\n\nHigher values = easier timing\nLower values = stricter timing\n\nLeave at default to use Judge Preset instead",
+		"value": 1.0,
+		"min": 0.009,
+		"max": 4.0,
+		"step": 0.1,
+		"decimals": 3
+	},
+	{
+		"save": "osu_header",
+		"name": "-OSU!MANIA SETTINGS-",
+		"type": "string",
+		"description": "Settings specific to the osu!mania scoring system (V1 and V2)",
+		"value": " ",
+		"options": [" ", " ", " ", " "]
+	},
+	{
+		"save": "osu_od",
+		"name": "Overall Difficulty (OD):",
+		"type": "float",
+		"description": "osu!mania Overall Difficulty (0-10)\nControls timing window strictness:\n\nOD 0: 300=64ms\nOD 5: 300=49ms\nOD 8: 300=40ms (default)\nOD 10: 300=34ms\n\nMAX window is always 16ms regardless of OD.\nHigher OD = stricter timing windows.",
+		"value": 8.0,
+		"min": 0.0,
+		"max": 10.0,
+		"step": 0.5,
+		"decimals": 1
+	},
+	{
+		"save": "itg_header",
+		"name": "-ITG SETTINGS-",
+		"type": "string",
+		"description": "Settings specific to the ITG scoring system",
+		"value": " ",
+		"options": [" ", " ", " ", " "]
+	},
+	{
+		"save": "itg_windowScale",
+		"name": "ITG Window Scale:",
+		"type": "float",
+		"description": "Timing window scale multiplier\nControls timing window strictness:\n\n1.0 = Default ITG windows (22.5ms Fantastic)\n0.5 = Half windows (11.25ms Fantastic)\n2.0 = Double windows (45ms Fantastic)\n\nLower values = stricter timing\nHigher values = more lenient timing",
+		"value": 1.0,
+		"min": 0.1,
+		"max": 4.0,
+		"step": 0.1,
+		"decimals": 1
+	},
+	{
+		"save": "ruthless_header",
+		"name": "-RUTHLESS SETTINGS-",
+		"type": "string",
+		"description": "Settings specific to the Ruthless scoring system",
+		"value": " ",
+		"options": [" ", " ", " ", " "]
+	},
+	{
+		"save": "ruthless_perfectWindow",
+		"name": "Perfect Window (ms):",
+		"type": "float",
+		"description": "Maximum timing offset for a 100% scored hit.\nHits beyond this window use linear curve down to 0%.\n\n0ms = Only frame-perfect hits score 100%\n10ms = Default (strict but achievable)\n20ms = Most lenient setting",
+		"value": 10.0,
+		"min": 0.0,
+		"max": 20.0,
+		"step": 0.5,
+		"decimals": 1
+	},
+	{
+		"save": "o2jam_header",
+		"name": "-O2JAM SETTINGS-",
+		"type": "string",
+		"description": "Settings specific to the O2Jam scoring system",
+		"value": " ",
+		"options": [" ", " ", " ", " "]
+	},
+	{
+		"save": "o2jam_useBPMWindows",
+		"name": "BPM-Based Windows",
+		"type": "bool",
+		"description": "Use BPM-based timing windows instead of fixed windows.\nAuthentic O2Jam behavior where timing difficulty scales with BPM.\n\nBPM windows (tick-based):\n  COOL = 7500/BPM ms (6 ticks)\n  GOOD = 22500/BPM ms (18 ticks)\n  BAD = 31250/BPM ms (25 ticks)\n\nFixed windows (default):\n  COOL = 33ms, GOOD = 67ms, BAD = 100ms\n\nExample at 150 BPM: COOL=50ms, GOOD=150ms, BAD=208ms\nExample at 200 BPM: COOL=37.5ms, GOOD=112.5ms, BAD=156ms",
+		"value": false
+	},
+	{
+		"save": "quaver_header",
+		"name": "-QUAVER SETTINGS-",
+		"type": "string",
+		"description": "Settings specific to the Quaver scoring system",
+		"value": " ",
+		"options": [" ", " ", " ", " "]
+	},
+	{
+		"save": "quaver_difficulty",
+		"name": "Judgement Difficulty:",
+		"type": "string",
+		"description": "Quaver timing difficulty preset.",
+		"value": "Standard",
+		"options": ["Peaceful", "Lenient", "Chill", "Standard", "Strict", "Tough", "Extreme", "Impossible"]
 	},
 	{
 		"save": "cmp_header",
@@ -146,126 +283,5 @@
 		"type": "bool",
 		"description": "Show BeatMania IIDX in the Score Comparison panel",
 		"value": true
-	},
-	{
-		"save": "scoring_showJudgementCounter",
-		"name": "Show Judgement Counter",
-		"type": "bool",
-		"description": "Show a real-time judgement counter displaying hit accuracy statistics\nAutomatically uses labels from the active scoring system",
-		"value": true
-	},
-	{
-		"save": "scoring_debug",
-		"name": "Enable Scoring Debug Output",
-		"type": "bool",
-		"description": "Enable debug output for the active scoring system",
-		"value": false
-	},
-	{
-		"save": "wife3_header",
-		"name": "-WIFE3 SETTINGS-",
-		"type": "string",
-		"description": "Settings specific to the Wife3 (Etterna) scoring system",
-		"value": " ",
-		"options": [" ", " ", " ", " "]
-	},
-	{
-		"save": "wife3_judgePreset",
-		"name": "Judge Preset:",
-		"type": "int",
-		"description": "Select timing difficulty preset:\nJ1 = Easiest (88ms Marvelous window)\nJ4 = Default (22ms Marvelous window)\nJ9 = Hardest/JUSTICE (8.8ms Marvelous window)\n\nLower numbers = easier timing\nHigher numbers = stricter timing",
-		"value": 4,
-		"min": 1,
-		"max": 9
-	},
-	{
-		"save": "wife3_judgeScale",
-		"name": "Judge Scale (Advanced):",
-		"type": "float",
-		"description": "Custom timing window scale (overrides preset if set)\n4.0 = J1 (88ms), 1.0 = J4 (22ms), 0.4 = J9 (8.8ms)\n\nExample: 0.7 = J4.5 (15.4ms)\n\nHigher values = easier timing\nLower values = stricter timing\n\nLeave at default to use Judge Preset instead",
-		"value": 1.0,
-		"min": 0.009,
-		"max": 4.0,
-		"step": 0.1,
-		"decimals": 3
-	},
-	{
-		"save": "wife3_useEtternaFCTiers",
-		"name": "Use Etterna FC Tier Names",
-		"type": "bool",
-		"description": "Use Etterna FC tier names (MFC/PFC/GFC) instead of Psych Engine names (MFC/SFC/GFC)",
-		"value": false
-	},
-	{
-		"save": "osu_header",
-		"name": "-OSU!MANIA SETTINGS-",
-		"type": "string",
-		"description": "Settings specific to the osu!mania scoring system (V1 and V2)",
-		"value": " ",
-		"options": [" ", " ", " ", " "]
-	},
-	{
-		"save": "osu_od",
-		"name": "Overall Difficulty (OD):",
-		"type": "float",
-		"description": "osu!mania Overall Difficulty (0-10)\nControls timing window strictness:\n\nOD 0: 300=64ms\nOD 5: 300=49ms\nOD 8: 300=40ms (default)\nOD 10: 300=34ms\n\nMAX window is always 16ms regardless of OD.\nHigher OD = stricter timing windows.",
-		"value": 8.0,
-		"min": 0.0,
-		"max": 10.0,
-		"step": 0.5,
-		"decimals": 1
-	},
-	{
-		"save": "itg_header",
-		"name": "-ITG SETTINGS-",
-		"type": "string",
-		"description": "Settings specific to the ITG scoring system",
-		"value": " ",
-		"options": [" ", " ", " ", " "]
-	},
-	{
-		"save": "itg_windowScale",
-		"name": "ITG Window Scale:",
-		"type": "float",
-		"description": "Timing window scale multiplier\nControls timing window strictness:\n\n1.0 = Default ITG windows (22.5ms Fantastic)\n0.5 = Half windows (11.25ms Fantastic)\n2.0 = Double windows (45ms Fantastic)\n\nLower values = stricter timing\nHigher values = more lenient timing",
-		"value": 1.0,
-		"min": 0.1,
-		"max": 4.0,
-		"step": 0.1,
-		"decimals": 1
-	},
-	{
-		"save": "ruthless_header",
-		"name": "-RUTHLESS SETTINGS-",
-		"type": "string",
-		"description": "Settings specific to the Ruthless scoring system",
-		"value": " ",
-		"options": [" ", " ", " ", " "]
-	},
-	{
-		"save": "ruthless_perfectWindow",
-		"name": "Perfect Window (ms):",
-		"type": "float",
-		"description": "Maximum timing offset for a 100% scored hit.\nHits within this window earn full points (500 score).\nHits beyond this window use a smoothstep curve down to 0%.\n\n0ms = Only frame-perfect hits score 100%\n10ms = Default (strict but achievable)\n20ms = Most lenient setting",
-		"value": 10.0,
-		"min": 0.0,
-		"max": 20.0,
-		"step": 0.5,
-		"decimals": 1
-	},
-	{
-		"save": "o2jam_header",
-		"name": "-O2JAM SETTINGS-",
-		"type": "string",
-		"description": "Settings specific to the O2Jam scoring system",
-		"value": " ",
-		"options": [" ", " ", " ", " "]
-	},
-	{
-		"save": "o2jam_useBPMWindows",
-		"name": "BPM-Based Windows",
-		"type": "bool",
-		"description": "Use BPM-based timing windows instead of fixed windows.\nAuthentic O2Jam behavior where timing difficulty scales with BPM.\n\nBPM windows (tick-based):\n  COOL = 7500/BPM ms (6 ticks)\n  GOOD = 22500/BPM ms (18 ticks)\n  BAD = 31250/BPM ms (25 ticks)\n\nFixed windows (default):\n  COOL = 33ms, GOOD = 67ms, BAD = 100ms\n\nExample at 150 BPM: COOL=50ms, GOOD=150ms, BAD=208ms\nExample at 200 BPM: COOL=37.5ms, GOOD=112.5ms, BAD=156ms",
-		"value": false
 	}
 ]

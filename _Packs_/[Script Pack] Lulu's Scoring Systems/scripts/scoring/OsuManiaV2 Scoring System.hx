@@ -655,6 +655,13 @@ function onCreatePost() {
 	osuv2_resetScoring();
 
 	debug('Total objects: ' + osuv2_totalObjects);
+
+	if (osuv2_isActiveSystem) {
+		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+		var outerWindow = 188.0 - 3.0 * osuv2_od;
+		Conductor.safeZoneOffset = outerWindow * playbackRate;
+		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (missWindow=' + outerWindow + 'ms)');
+	}
 }
 
 function preUpdateScore(miss:Bool) {

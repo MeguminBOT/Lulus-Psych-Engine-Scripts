@@ -201,12 +201,12 @@ function getTimingColor(absOffset:Float):FlxColor {
 		var badW = o2jamHitWindow != null ? o2jamHitWindow('bad') : 100.0;
 
 		if (absOffset <= coolW)
-			return FlxColor.CYAN; // COOL
+			return FlxColor.YELLOW; // COOL
 		if (absOffset <= goodW)
-			return FlxColor.GREEN; // GOOD
+			return FlxColor.CYAN; // GOOD
 		if (absOffset <= badW)
-			return FlxColor.YELLOW; // BAD
-		return FlxColor.RED; // MISS
+			return FlxColor.MAGENTA; // BAD
+		return FlxColor.ORANGE; // MISS
 	} else if (td_scoringSystem == 'DJMAX') {
 		if (absOffset <= 16.0)
 			return FlxColor.CYAN; // MAX 100%
@@ -228,15 +228,27 @@ function getTimingColor(absOffset:Float):FlxColor {
 			return FlxColor.MAGENTA; // BAD
 		return FlxColor.RED; // POOR
 	} else if (td_scoringSystem == 'Quaver') {
-		if (absOffset <= 18.0)
-			return FlxColor.CYAN; // Marvelous
-		if (absOffset <= 43.0)
-			return FlxColor.YELLOW; // Perfect
-		if (absOffset <= 76.0)
-			return FlxColor.GREEN; // Great
-		if (absOffset <= 106.0)
-			return FlxColor.MAGENTA; // Good
-		return FlxColor.RED; // Miss
+		var quaverMarvWindow = getVar('quaver_marvelousWindow');
+		var quaverPerfWindow = getVar('quaver_perfectWindow');
+		var quaverGreatWindow = getVar('quaver_greatWindow');
+		var quaverGoodWindow = getVar('quaver_goodWindow');
+		if (quaverMarvWindow == null)
+			quaverMarvWindow = 18.0;
+		if (quaverPerfWindow == null)
+			quaverPerfWindow = 43.0;
+		if (quaverGreatWindow == null)
+			quaverGreatWindow = 76.0;
+		if (quaverGoodWindow == null)
+			quaverGoodWindow = 106.0;
+		if (absOffset <= quaverMarvWindow)
+			return FlxColor.WHITE; // Marvelous
+		if (absOffset <= quaverPerfWindow)
+			return 0xFFFFE76B; // Perfect
+		if (absOffset <= quaverGreatWindow)
+			return 0xFF5FFF7B; // Great
+		if (absOffset <= quaverGoodWindow)
+			return 0xFF00EFFF; // Good
+		return 0xFFF877EB; // Okay
 	} else {
 		if (absOffset <= 22.0)
 			return FlxColor.CYAN;

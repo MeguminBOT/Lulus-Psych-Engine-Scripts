@@ -9,17 +9,12 @@
 			- Wife3-inspired song score calculation.
 			- Judge 1-9 presets for customizable difficulty.
 			- Customizable judge scale instead of being limited to presets only.
-			- *Optional* Timing feedback display showing hit accuracy in milliseconds.
 			- *Optional* Kade Engine style score text formatting.
-			- *Optional* Etterna style FC Tiers.
 			- Settings.json support (when using "Lulu's Feature Pack")
 				- Configure settings through the mod settings menu
 				- Settings from settings.json will override the default values in the script
 
 		Place this script in 'mods/YourMod/scripts/' or 'mods/scripts/'.
-
-		See the wiki for API reference and usage examples in other scripts.
-		https://github.com/MeguminBOT/Lulus-Psych-Engine-Scripts/wiki/Wife3-Scoring-System.hx
 
 	Script by AutisticLulu.
  */
@@ -32,7 +27,6 @@ var wife3_isActiveSystem = false;
 var wife3_debug = false;
 var wife3_replaceScoreText = true;
 var wife3_kadeEngineStyle = false; // Whether to use Kade Engine style scoreText or Psych Engine style.
-var wife3_useEtternaFCTiers = false; // Whether to use Etterna FC tier names (MFC/SFC/GFC) or Psych Engine tier names (MFC/PFC/GFC)
 // --- Algorithm Constants (Do Not Modify) ---
 var wife3_miss_weight = -5.5;
 var wife3_max_points = 2.0;
@@ -93,9 +87,6 @@ function loadSettings() {
 
 	if ((value = getModSetting('scoring_kadeEngineStyle')) != null)
 		wife3_kadeEngineStyle = value;
-
-	if ((value = getModSetting('wife3_useEtternaFCTiers')) != null)
-		wife3_useEtternaFCTiers = value;
 
 	if ((value = getModSetting('wife3_judgePreset')) != null) {
 		var judgePreset:Int = Std.int(value);
@@ -460,7 +451,7 @@ function wife3_getRatingFC():String {
 	}
 
 	if (wife3_greatHits == 0 && wife3_goodHits == 0 && wife3_badHits == 0) {
-		return wife3_useEtternaFCTiers ? 'PFC' : 'SFC';
+		return 'PFC';
 	}
 
 	if (wife3_goodHits == 0 && wife3_badHits == 0) {
@@ -504,24 +495,6 @@ function wife3_setKadeEngineStyle(kadeStyle:Bool) {
  */
 function wife3_getKadeEngineStyle():Bool {
 	return wife3_kadeEngineStyle;
-}
-
-/**
- * Sets which FC tier naming convention to use
- * @param useEtterna If true, uses Etterna tier names (PFC); if false, uses Psych Engine tier names (SFC)
- */
-function wife3_setUseEtternaFCTiers(useEtterna:Bool) {
-	wife3_useEtternaFCTiers = useEtterna;
-	setVar('wife3_useEtternaFCTiers', wife3_useEtternaFCTiers);
-	debug('Using ' + (useEtterna ? 'Etterna' : 'Psych Engine') + ' style FC tier names');
-}
-
-/**
- * Returns which FC tier naming convention is being used
- * @return True if using Etterna style, false if using Psych Engine style
- */
-function wife3_getUseEtternaFCTiers():Bool {
-	return wife3_useEtternaFCTiers;
 }
 
 /**
@@ -598,9 +571,7 @@ function registerCallbacks() {
 		['wife3_getReplaceScoreText', wife3_getReplaceScoreText],
 		['wife3_updateScoreText', wife3_updateScoreText],
 		['wife3_setKadeEngineStyle', wife3_setKadeEngineStyle],
-		['wife3_getKadeEngineStyle', wife3_getKadeEngineStyle],
-		['wife3_setUseEtternaFCTiers', wife3_setUseEtternaFCTiers],
-		['wife3_getUseEtternaFCTiers', wife3_getUseEtternaFCTiers]
+		['wife3_getKadeEngineStyle', wife3_getKadeEngineStyle]
 	];
 
 	for (callback in callbacks) {
@@ -624,6 +595,13 @@ function onCreate() {
 
 function onCreatePost() {
 	wife3_resetAccuracy();
+
+	if (wife3_isActiveSystem) {
+		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+		var outerWindow = 180.0 * wife3_judge_scale;
+		Conductor.safeZoneOffset = outerWindow * playbackRate;
+		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (badWindow=' + outerWindow + 'ms)');
+	}
 }
 
 function preUpdateScore(miss:Bool) {

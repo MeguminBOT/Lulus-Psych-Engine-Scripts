@@ -5,7 +5,6 @@
 		matching the active scoring system's judgement tiers.
 
 		Supported Scoring Systems:
-			- Psych:    sick, good, bad, shit
 			- Wife3:    marvelous, perfect, great, good, bad
 			- OsuMania: MAX, 300, 200, 100, 50
 			- OsuManiaV2: MAX, 300, 200, 100, 50
@@ -14,7 +13,7 @@
 			- O2Jam:    cool, good, bad
 			- DJMAX:    max100, max90, good, bad
 			- IIDX:     pgreat, great, good, bad
-			- Quaver:   marvelous, perfect, great, good
+			- Quaver:   marvelous, perfect, great, good, okay
 
 		Image Paths (Individual Images):
 			Place rating images in: mods/YourMod/images/ratings/[system]/
@@ -60,16 +59,22 @@
 			Format:
 				{
 					"antialiasing": true,
+					"scale": 1.0,
 					"offsets": {
 						"flawless": [10, -5],
 						"precise":  [0, 0],
-						"great":    [-3, 2]
+						"great":    [-3, 2],
+						"miss":     [0, 0]
 					}
 				}
 
 			Fields:
 				antialiasing  - Default antialiasing for this system's popups.
-								Only used when the setting is set to "Theme Default".
+								Used when "Use Theme Defaults" is on, or
+								when antialiasing is set to "Theme Default".
+				scale         - Scale multiplier for this system's popups.
+								Used when "Use Theme Defaults" is on.
+								1.0 = default size, 0.5 = half, 2.0 = double.
 				offsets       - Per-judgement [x, y] position adjustments.
 								Applied after positioning. Works for both
 								individual images and spritesheet animations.
@@ -91,7 +96,9 @@ var ratingPopups_debug = false;
 var ratingPopups_activeSystem = 'Psych';
 var ratingPopups_scale = 1.0;
 var ratingPopups_antialiasing = 'ClientPrefs';
+var ratingPopups_useThemeDefaults = false;
 var ratingPopups_themeAA = true;
+var ratingPopups_themeScale = 1.0;
 var ratingPopups_spritesheetFrames = null;
 var ratingPopups_offsets = null;
 var ratingPopups_graphicCache = null;
@@ -119,6 +126,9 @@ function loadSettings() {
 	if ((value = getModSetting('scoring_ratingAntialiasing')) != null)
 		ratingPopups_antialiasing = value;
 
+	if ((value = getModSetting('scoring_useThemeDefaults')) != null)
+		ratingPopups_useThemeDefaults = value;
+
 	if ((value = getModSetting('scoring_debug')) != null)
 		ratingPopups_debug = value;
 }
@@ -133,9 +143,10 @@ function loadSettings() {
  * @return true/false for antialiasing
  */
 function resolveAntialiasing():Bool {
+	if (ratingPopups_useThemeDefaults)
+		return ratingPopups_themeAA;
+
 	switch (ratingPopups_antialiasing) {
-		case 'Theme Default':
-			return ratingPopups_themeAA;
 		case 'On':
 			return true;
 		case 'Off':
@@ -143,6 +154,17 @@ function resolveAntialiasing():Bool {
 		default:
 			return ClientPrefs.data.antialiasing;
 	}
+}
+
+/**
+ * Resolves the scale value. Uses theme scale when useThemeDefaults is on.
+ *
+ * @return Scale multiplier
+ */
+function resolveScale():Float {
+	if (ratingPopups_useThemeDefaults)
+		return ratingPopups_themeScale;
+	return ratingPopups_scale;
 }
 
 // ========================================
@@ -387,7 +409,9 @@ function getQuaverJudgementFromWindows(offsetMs:Float):String {
 		return 'perfect';
 	if (offsetMs <= fn('great'))
 		return 'great';
-	return 'good';
+	if (offsetMs <= fn('good'))
+		return 'good';
+	return 'okay';
 }
 
 // ========================================
@@ -462,6 +486,8 @@ function loadSpritesheet() {
 			ratingPopups_offsets = Reflect.field(theme, 'offsets');
 		if (Reflect.hasField(theme, 'antialiasing'))
 			ratingPopups_themeAA = Reflect.field(theme, 'antialiasing');
+		if (Reflect.hasField(theme, 'scale'))
+			ratingPopups_themeScale = Reflect.field(theme, 'scale');
 		debug('Theme loaded: ' + themePath);
 	}
 
@@ -482,25 +508,25 @@ function loadSpritesheet() {
 function getSystemJudgements():Array<String> {
 	switch (ratingPopups_activeSystem) {
 		case 'Wife3':
-			return ['marvelous', 'perfect', 'great', 'good', 'bad'];
+			return ['marvelous', 'perfect', 'great', 'good', 'bad', 'miss'];
 		case 'OsuMania':
-			return ['max', '300', '200', '100', '50'];
+			return ['max', '300', '200', '100', '50', 'miss'];
 		case 'OsuManiaV2':
-			return ['max', '300', '200', '100', '50'];
+			return ['max', '300', '200', '100', '50', 'miss'];
 		case 'ITG':
-			return ['fantastic', 'excellent', 'great', 'decent', 'wayoff'];
+			return ['fantastic', 'excellent', 'great', 'decent', 'wayoff', 'miss'];
 		case 'Ruthless':
-			return ['flawless', 'precise', 'great', 'good', 'ok', 'sloppy', 'barely'];
+			return ['flawless', 'precise', 'great', 'good', 'ok', 'sloppy', 'barely', 'miss'];
 		case 'O2Jam':
-			return ['cool', 'good', 'bad'];
+			return ['cool', 'good', 'bad', 'miss'];
 		case 'DJMAX':
-			return ['max100', 'max90', 'good', 'bad'];
+			return ['max100', 'max90', 'good', 'bad', 'miss'];
 		case 'IIDX':
-			return ['pgreat', 'great', 'good', 'bad'];
+			return ['pgreat', 'great', 'good', 'bad', 'miss'];
 		case 'Quaver':
-			return ['marvelous', 'perfect', 'great', 'good'];
+			return ['marvelous', 'perfect', 'great', 'good', 'okay', 'miss'];
 		default:
-			return ['sick', 'good', 'bad', 'shit'];
+			return [];
 	}
 }
 
@@ -595,7 +621,7 @@ function spawnPopup(judgement:String) {
 	popup.x = popup.x + ClientPrefs.data.comboOffset[0];
 	popup.y = popup.y - ClientPrefs.data.comboOffset[1];
 
-	// Apply per-judgement offset from offsets.json
+	// Apply per-judgement offset from theme.json
 	if (ratingPopups_offsets != null) {
 		var off = Reflect.field(ratingPopups_offsets, assetName);
 		if (off != null) {
@@ -607,17 +633,18 @@ function spawnPopup(judgement:String) {
 	popup.antialiasing = resolveAntialiasing();
 	popup.visible = !ClientPrefs.data.hideHud;
 
+	var scale = resolveScale();
 	if (!PlayState.isPixelStage)
-		popup.setGraphicSize(Std.int(popup.width * 1 * ratingPopups_scale));
+		popup.setGraphicSize(Std.int(popup.width * 1 * scale));
 	else
-		popup.setGraphicSize(Std.int(popup.width * PlayState.daPixelZoom * 0.25 * ratingPopups_scale));
+		popup.setGraphicSize(Std.int(popup.width * PlayState.daPixelZoom * 0.25 * scale));
 
 	popup.updateHitbox();
 	popup.cameras = [game.camHUD];
 
 	game.comboGroup.add(popup);
 
-	FlxTween.tween(popup, {alpha: 0}, 0.2 / game.playbackRate, {
+	FlxTween.tween(popup, {alpha: 0}, 0.1 / game.playbackRate, {
 		onComplete: function(tween:FlxTween) {
 			game.comboGroup.remove(popup);
 			popup.destroy();
@@ -660,4 +687,14 @@ function goodNoteHit(note:Note) {
 
 	var judgement = getJudgementForSystem(offsetMs);
 	spawnPopup(judgement);
+}
+
+function noteMiss(note:Note) {
+	if (!ratingPopups_enabled || ratingPopups_activeSystem == 'Psych')
+		return;
+
+	if (note.isSustainNote || !note.mustPress)
+		return;
+
+	spawnPopup('miss');
 }

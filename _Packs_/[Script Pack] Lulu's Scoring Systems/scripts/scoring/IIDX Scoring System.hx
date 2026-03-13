@@ -576,6 +576,12 @@ function onCreate() {
 function onCreatePost() {
 	iidx_resetScoring();
 	debug('IIDX scoring ready');
+
+	if (iidx_isActiveSystem) {
+		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+		Conductor.safeZoneOffset = iidx_awfulWindow * playbackRate;
+		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (awfulWindow=' + iidx_awfulWindow + 'ms)');
+	}
 }
 
 function preUpdateScore(miss:Bool) {

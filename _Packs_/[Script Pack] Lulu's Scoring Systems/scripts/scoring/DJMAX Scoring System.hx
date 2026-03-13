@@ -547,6 +547,12 @@ function onCreate() {
 function onCreatePost() {
 	djmax_resetScoring();
 	debug('DJMAX scoring ready');
+
+	if (djmax_isActiveSystem) {
+		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+		Conductor.safeZoneOffset = djmax_badWindow * playbackRate;
+		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (badWindow=' + djmax_badWindow + 'ms)');
+	}
 }
 
 function preUpdateScore(miss:Bool) {

@@ -1,7 +1,7 @@
 --[[
 	>>> Judgement Counter for Psych Engine
 		Lua script that displays a judgment counter showing hit accuracy statistics.
-		Automatically detects the active scoring system (Wife3, osu!mania, ITG, IIDX, or Psych)
+		Automatically detects the active scoring system (Wife3, osu!mania, ITG, IIDX, Quaver, or Psych)
 		and displays the appropriate judgment labels and colors.
 
 		Features:
@@ -13,6 +13,7 @@
 			- osu!mania: MAX, 300, 200, 100, 50, Miss
 			- ITG: Fantastic, Excellent, Great, Decent, Way Off, Miss
 			- IIDX: PGreat, Great, Good, Bad, Awful, Miss
+			- Quaver: Marvelous, Perfect, Great, Good, Okay, Miss
 			- Psych: Sick, Good, Bad, Shit, Miss (fallback)
 
 		Place this script in 'mods/YourMod/scripts/' or 'mods/scripts/'.
@@ -64,12 +65,13 @@ local judgementTexts = {}
 local counterEnabled = true
 
 -- Scoring system detection
-local scoringSystem = 'Psych' -- 'Psych', 'Wife3', 'OsuMania', 'ITG', 'Ruthless', or 'IIDX'
+local scoringSystem = 'Psych' -- 'Psych', 'Wife3', 'OsuMania', 'ITG', 'Ruthless', 'IIDX', 'Quaver'
 local wife3Available = false
 local osuAvailable = false
 local itgAvailable = false
 local ruthlessAvailable = false
 local iidxAvailable = false
+local quaverAvailable = false
 
 -- ========================================
 -- HELPER FUNCTIONS
@@ -105,6 +107,12 @@ local function checkIIDXAvailability()
     return iidxAvailable
 end
 
+-- Check if Quaver scoring system is available
+local function checkQuaverAvailability()
+    quaverAvailable = (getVar('quaver_enabled') ~= nil and getVar('quaver_enabled') == true)
+    return quaverAvailable
+end
+
 -- Detect active scoring system
 local function detectScoringSystem()
     local setting = getModSetting('scoring_system')
@@ -117,6 +125,7 @@ local function detectScoringSystem()
     checkITGAvailability()
     checkRuthlessAvailability()
     checkIIDXAvailability()
+    checkQuaverAvailability()
 
     -- Fallback detection if settings aren't available
     if setting == nil then
@@ -130,6 +139,8 @@ local function detectScoringSystem()
             scoringSystem = 'Ruthless'
         elseif iidxAvailable then
             scoringSystem = 'IIDX'
+        elseif quaverAvailable then
+            scoringSystem = 'Quaver'
         else
             scoringSystem = 'Psych'
         end
@@ -138,7 +149,23 @@ end
 
 -- Get judgment counts based on active scoring system
 local function getJudgmentCounts()
-    if scoringSystem == 'Wife3' or scoringSystem == 'OsuMania' or scoringSystem == 'ITG' or scoringSystem == 'Ruthless' or scoringSystem == 'IIDX' then
+    if scoringSystem == 'O2Jam' then
+        return {
+            { count = tier1Count },
+            { count = tier2Count },
+            { count = tier3Count },
+            { count = missCount }
+        }
+    elseif scoringSystem == 'Quaver' then
+        return {
+            { count = tier1Count },
+            { count = tier2Count },
+            { count = tier3Count },
+            { count = tier4Count },
+            { count = tier5Count },
+            { count = missCount }
+        }
+    elseif scoringSystem == 'Wife3' or scoringSystem == 'OsuMania' or scoringSystem == 'ITG' or scoringSystem == 'Ruthless' or scoringSystem == 'IIDX' then
         if scoringSystem == 'Ruthless' then
             return {
                 { count = tier1Count },
@@ -182,7 +209,14 @@ end
 
 -- Get judgment definitions (labels + colors) based on active scoring system
 local function getJudgmentDefinitions()
-    if scoringSystem == 'OsuMania' then
+    if scoringSystem == 'O2Jam' then
+        return {
+            { name = 'tier1', label = 'Cool', color = 'FFFF00' },
+            { name = 'tier2', label = 'Good', color = '00FFFF' },
+            { name = 'tier3', label = 'Bad',  color = 'FF00FF' },
+            { name = 'miss',  label = 'Miss', color = 'FF8000' }
+        }
+    elseif scoringSystem == 'OsuMania' then
         return {
             { name = 'tier1', label = 'MAX',  color = '00FFFF' },
             { name = 'tier2', label = '300',  color = 'FFFF00' },
@@ -228,6 +262,15 @@ local function getJudgmentDefinitions()
             { name = 'tier4', label = 'Bad',    color = '0088FF' },
             { name = 'tier5', label = 'Awful',  color = 'FF00FF' },
             { name = 'miss',  label = 'Miss',   color = 'FF0000' }
+        }
+    elseif scoringSystem == 'Quaver' then
+        return {
+            { name = 'tier1', label = 'Marvelous', color = 'FFFFFF' },
+            { name = 'tier2', label = 'Perfect',   color = 'FFE76B' },
+            { name = 'tier3', label = 'Great',     color = '5FFF7B' },
+            { name = 'tier4', label = 'Good',      color = '00EFFF' },
+            { name = 'tier5', label = 'Okay',      color = 'F877EB' },
+            { name = 'miss',  label = 'Miss',      color = 'F9645D' }
         }
     else
         -- Psych Engine default (4 hit windows)
@@ -360,6 +403,28 @@ local function classifyHit(noteDiff)
             return 4 -- Bad
         else
             return 5 -- Awful
+        end
+    elseif scoringSystem == 'O2Jam' then
+        -- O2Jam windows (cool ≤ 33ms, good ≤ 67ms, bad ≤ 100ms)
+        if absOffset <= 33 then
+            return 1 -- Cool
+        elseif absOffset <= 67 then
+            return 2 -- Good
+        else
+            return 3 -- Bad
+        end
+    elseif scoringSystem == 'Quaver' then
+        -- Quaver windows (Standard: 18, 43, 76, 106, 127)
+        if absOffset <= 18 then
+            return 1 -- Marvelous
+        elseif absOffset <= 43 then
+            return 2 -- Perfect
+        elseif absOffset <= 76 then
+            return 3 -- Great
+        elseif absOffset <= 106 then
+            return 4 -- Good
+        else
+            return 5 -- Okay
         end
     else
         -- Wife3 windows

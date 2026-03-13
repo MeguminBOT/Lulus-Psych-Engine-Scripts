@@ -715,6 +715,12 @@ function onCreate() {
 function onCreatePost() {
 	ruthless_resetScoring();
 	countTotalNotes();
+
+	if (ruthless_isActiveSystem) {
+		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+		Conductor.safeZoneOffset = ruthless_missWindow * playbackRate;
+		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (missWindow=' + ruthless_missWindow + 'ms)');
+	}
 }
 
 function preUpdateScore(miss:Bool) {
