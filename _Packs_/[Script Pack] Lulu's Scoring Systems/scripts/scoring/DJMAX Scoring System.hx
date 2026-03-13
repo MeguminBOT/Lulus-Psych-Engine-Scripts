@@ -153,7 +153,7 @@ function djmax_getHitWindow(judgement:String):Float {
 		case 'bad':
 			return djmax_badWindow;
 		default:
-			return 0.0;
+			return djmax_badWindow;
 	}
 }
 

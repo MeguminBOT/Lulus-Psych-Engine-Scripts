@@ -152,7 +152,7 @@ function osuv2_getHitWindow(judgement:String):Float {
 		case 'miss':
 			return 188.0 - 3.0 * osuv2_od;
 		default:
-			return 0.0;
+			return 188.0 - 3.0 * osuv2_od;
 	}
 }
 

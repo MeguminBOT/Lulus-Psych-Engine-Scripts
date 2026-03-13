@@ -156,7 +156,7 @@ function iidx_getHitWindow(judgement:String):Float {
 		case 'awful':
 			return iidx_awfulWindow;
 		default:
-			return 0.0;
+			return iidx_awfulWindow;
 	}
 }
 

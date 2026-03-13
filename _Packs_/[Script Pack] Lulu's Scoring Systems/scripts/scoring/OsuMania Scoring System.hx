@@ -164,7 +164,7 @@ function osu_getHitWindow(judgement:String):Float {
 		case 'miss':
 			return 188.0 - 3.0 * osu_od;
 		default:
-			return 0.0;
+			return 188.0 - 3.0 * osu_od;
 	}
 }
 

@@ -327,7 +327,7 @@ function wife3_getTimingWindow(windowType:String):Float {
 		case 'bad':
 			return 180.0 * wife3_judge_scale;
 		default:
-			return 0.0;
+			return 180.0 * wife3_judge_scale;
 	}
 }
 

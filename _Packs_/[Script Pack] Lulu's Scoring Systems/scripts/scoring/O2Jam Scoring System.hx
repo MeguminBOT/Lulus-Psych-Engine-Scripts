@@ -220,7 +220,7 @@ function o2jam_getHitWindow(judgement:String):Float {
 		case 'bad':
 			return o2jam_badWindow;
 		default:
-			return 0.0;
+			return o2jam_badWindow;
 	}
 }
 

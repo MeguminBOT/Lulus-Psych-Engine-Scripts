@@ -374,7 +374,7 @@ function ruthless_getTimingWindow(windowType:String):Float {
 		case 'barely':
 			return 100.0;
 		default:
-			return 0.0;
+			return ruthless_missWindow;
 	}
 }
 

@@ -159,7 +159,7 @@ function itg_getHitWindow(judgement:String):Float {
 		case 'wayoff':
 			base = 180.0;
 		default:
-			return 0.0;
+			base = 180.0;
 	}
 	return base * itg_windowScale;
 }
