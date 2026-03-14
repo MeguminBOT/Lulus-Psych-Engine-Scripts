@@ -16,7 +16,7 @@
 // ========================================
 
 var td_enabled = true;
-var td_scoringSystem = 'Psych'; // 'Psych', 'Wife3', 'OsuMania', 'ITG', or 'Ruthless'
+var td_scoringSystem = 'Psych'; // 'Psych', 'Wife3', 'OsuMania', 'OsuManiaV2', 'ITG', 'Ruthless', 'O2Jam', 'DJMAX', 'IIDX', 'Quaver'
 // --- Timing Display Objects (Do Not Modify) ---
 var td_timingText:FlxText = null;
 var td_timingTween:FlxTween = null;
