@@ -210,10 +210,10 @@
 		"save": "ruthless_perfectWindow",
 		"name": "Perfect Window (ms):",
 		"type": "float",
-		"description": "Maximum timing offset for a 100% scored hit.\nHits beyond this window use linear curve down to 0%.\n\n0ms = Only frame-perfect hits score 100%\n10ms = Default (strict but achievable)\n20ms = Most lenient setting",
+		"description": "Maximum timing offset for a 100% scored hit.\nHits beyond this window use linear curve down to 0%.\n\n0ms = Only frame-perfect hits score 100%\n10ms = Default (strict but achievable)\n15ms = Most lenient setting",
 		"value": 10.0,
 		"min": 0.0,
-		"max": 20.0,
+		"max": 15.0,
 		"step": 0.5,
 		"decimals": 1
 	},

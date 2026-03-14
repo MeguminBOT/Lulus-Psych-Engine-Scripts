@@ -179,20 +179,20 @@ function getTimingColor(absOffset:Float):FlxColor {
 		return FlxColor.RED; // Miss
 	} else if (td_scoringSystem == 'Ruthless') {
 		if (absOffset <= td_ruthlessPerfectWindow)
-			return 0xFFFFD700; // Flawless (gold)
+			return 0xFFE6FFFF; // Flawless (diamond / icy white)
 		if (absOffset <= 20.0)
-			return FlxColor.GREEN; // Precise
+			return 0xFF7DF9FF; // Precise (bright cyan)
 		if (absOffset <= 30.0)
-			return 0xFF88FF00; // Great (yellow-green)
+			return 0xFF4CFF6A; // Great (vivid green)
 		if (absOffset <= 40.0)
-			return FlxColor.CYAN; // Good
+			return 0xFF00CC44; // Good (deep green)
 		if (absOffset <= 50.0)
-			return FlxColor.YELLOW; // Ok
+			return 0xFFFFE066; // Ok (soft yellow)
 		if (absOffset <= 75.0)
-			return FlxColor.ORANGE; // Sloppy
+			return 0xFFFF9A3D; // Sloppy (orange)
 		if (absOffset <= 100.0)
-			return FlxColor.MAGENTA; // Barely
-		return FlxColor.RED; // Miss
+			return 0xFFFF4DB8; // Barely (magenta)
+		return 0xFFFF4242; // Miss (red)
 	} else if (td_scoringSystem == 'O2Jam') {
 		// Use dynamic windows from O2Jam script (supports BPM-based mode)
 		var o2jamHitWindow = getVar('o2jam_getHitWindow');

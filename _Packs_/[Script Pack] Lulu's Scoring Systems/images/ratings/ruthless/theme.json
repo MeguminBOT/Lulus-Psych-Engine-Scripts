@@ -1,13 +1,13 @@
 {
 	"antialiasing": true,
 	"offsets": {
-		"flawless": [0, 0],
-		"precise": [0, 0],
-		"great": [0, 0],
-		"good": [0, 0],
-		"ok": [0, 0],
-		"sloppy": [0, 0],
-		"barely": [0, 0],
-		"miss": [0, 0]
+		"flawless": [-132, 64],
+		"precise": [-132, 64],
+		"great": [-132, 64],
+		"good": [-132, 64],
+		"ok": [-132, 64],
+		"sloppy": [-132, 64],
+		"barely": [-132, 64],
+		"miss": [-132, 64]
 	}
 }

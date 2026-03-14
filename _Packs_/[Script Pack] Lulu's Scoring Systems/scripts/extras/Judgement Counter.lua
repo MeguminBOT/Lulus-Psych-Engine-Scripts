@@ -283,13 +283,13 @@ local function getJudgmentDefinitions()
         }
     elseif scoringSystem == 'Ruthless' then
         return {
-            { name = 'tier1', label = 'Flawless', color = 'FFD700' },
-            { name = 'tier2', label = 'Precise',  color = '00FF00' },
-            { name = 'tier3', label = 'Great',    color = '88FF00' },
-            { name = 'tier4', label = 'Good',     color = '00FFFF' },
-            { name = 'tier5', label = 'Ok',       color = 'FFFF00' },
-            { name = 'tier6', label = 'Sloppy',   color = 'FF8800' },
-            { name = 'tier7', label = 'Barely',   color = 'FF00FF' },
+            { name = 'tier1', label = 'Flawless', color = 'E6FFFF' },
+            { name = 'tier2', label = 'Precise',  color = '7DF9FF' },
+            { name = 'tier3', label = 'Great',    color = '4CFF6A' },
+            { name = 'tier4', label = 'Good',     color = '00CC44' },
+            { name = 'tier5', label = 'Ok',       color = 'FFE066' },
+            { name = 'tier6', label = 'Sloppy',   color = 'FF9A3D' },
+            { name = 'tier7', label = 'Barely',   color = 'FF4DB8' },
             { name = 'miss',  label = 'Miss',     color = 'FF0000' }
         }
     elseif scoringSystem == 'IIDX' then
