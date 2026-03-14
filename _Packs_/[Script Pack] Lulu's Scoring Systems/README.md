@@ -53,11 +53,11 @@ Also includes:
 | **osu!mania V1** | osu! | 1,000,000 | Weighted hit ratio | OD 0–10 | Yes (bonus multiplier) | Yes | Yes | Yes |
 | **osu!mania V2** | osu! | 1,000,000 | Weighted hit ratio | OD 0–10 | Yes (70% of score) | Yes | Yes | Yes |
 | **ITG** | In The Groove / StepMania | 10,000,000 | Dance Points | Window Scale 0.1–4.0 | No (step counter weighted) | Yes | Yes | Pass/Fail |
-| **Ruthless** | Custom | 1,000,000 | Linear curve | Perfect Window 0–25ms | No (bonus multiplier) | — | — | No |
+| **Ruthless** | Custom | 1,000,000 | Linear curve | Perfect Window 0–15ms | No (bonus multiplier) | — | — | No |
 | **O2Jam** | O2Jam | Unlimited | Weighted hit ratio | BPM scaling toggle | Yes (score = weight × combo) | Yes | Yes | No |
 | **DJMAX** | DJMAX RESPECT V | 1,000,000 | Weighted average | No | No | Yes | Yes | No |
 | **IIDX** | beatmania IIDX | EX Score | EX Rate | No | No | Yes | No | No |
-| **Quaver** | Quaver | 1,000,000 | Weighted average | No | No | Yes | Yes | No |
+| **Quaver** | Quaver | 1,000,000 | Weighted average | 8 Difficulty Presets | No | Yes | Yes | No |
 
 ---
 
@@ -568,15 +568,16 @@ Range: 0–100% (never negative)
 
 | Grade | % | | Grade | % |
 |-------|---|-|-------|---|
-| X+ | ≥ 99.00% | | B | ≥ 88.50% |
-| X | ≥ 98.50% | | B− | ≥ 87.00% |
-| X− | ≥ 98.00% | | C+ | ≥ 85.50% |
-| SS+ | ≥ 97.50% | | C | ≥ 84.00% |
-| SS | ≥ 97.00% | | C− | ≥ 82.50% |
-| SS− | ≥ 96.50% | | D+ | ≥ 80.00% |
-| S+ | ≥ 96.00% | | D | ≥ 77.50% |
-| S | ≥ 95.00% | | D− | ≥ 75.00% |
-| S− | ≥ 94.00% | | F | < 75.00% |
+| XX | ≥ 99.50% | | B | ≥ 88.50% |
+| X+ | ≥ 99.00% | | B− | ≥ 87.00% |
+| X | ≥ 98.50% | | C+ | ≥ 85.50% |
+| X− | ≥ 98.00% | | C | ≥ 84.00% |
+| SS+ | ≥ 97.50% | | C− | ≥ 82.50% |
+| SS | ≥ 97.00% | | D+ | ≥ 80.00% |
+| SS− | ≥ 96.50% | | D | ≥ 77.50% |
+| S+ | ≥ 96.00% | | D− | ≥ 75.00% |
+| S | ≥ 95.00% | | F | < 75.00% |
+| S− | ≥ 94.00% | | | |
 | A+ | ≥ 93.00% | | | |
 | A | ≥ 92.00% | | | |
 | A− | ≥ 91.00% | | | |
@@ -601,7 +602,7 @@ Judgements within 50ms (Flawless through Ok) **maintain combo**. Hits later than
 
 | Setting | Range | Default |
 |---------|-------|---------|
-| Perfect Window | 0.0–25.0ms | 10.0ms |
+| Perfect Window | 0.0–15.0ms | 10.0ms |
 
 ---
 
@@ -904,9 +905,11 @@ Grades are based on **ninths** of the maximum EX Score:
 
 ### 10. Quaver
 
-The scoring system from **Quaver**, an open-source vertical scrolling rhythm game. Uses weighted accuracy normalized to 1,000,000.
+The scoring system from **Quaver**, an open-source vertical scrolling rhythm game. Uses weighted accuracy normalized to 1,000,000. Features 6 judgement tiers and 8 difficulty presets (Peaceful → Impossible).
 
 #### Timing Windows
+
+Windows vary by **difficulty preset** (Standard shown, default):
 
 | Judgement | Window |
 |-----------|--------|
@@ -914,7 +917,24 @@ The scoring system from **Quaver**, an open-source vertical scrolling rhythm gam
 | Perfect | ±43ms |
 | Great | ±76ms |
 | Good | ±106ms |
-| Miss | > 106ms |
+| Okay | ±127ms |
+| Miss | > 164ms |
+
+<details>
+<summary>📋 All difficulty presets</summary>
+
+| Preset | Marvelous | Perfect | Great | Good | Okay | Miss |
+|--------|-----------|---------|-------|------|------|------|
+| Peaceful | ±23ms | ±57ms | ±101ms | ±141ms | ±169ms | > 218ms |
+| Lenient | ±21ms | ±52ms | ±91ms | ±128ms | ±153ms | > 198ms |
+| Chill | ±19ms | ±47ms | ±83ms | ±116ms | ±139ms | > 180ms |
+| **Standard** | **±18ms** | **±43ms** | **±76ms** | **±106ms** | **±127ms** | **> 164ms** |
+| Strict | ±16ms | ±39ms | ±69ms | ±96ms | ±127ms | > 164ms |
+| Tough | ±14ms | ±35ms | ±62ms | ±87ms | ±127ms | > 164ms |
+| Extreme | ±13ms | ±32ms | ±57ms | ±79ms | ±127ms | > 164ms |
+| Impossible | ±8ms | ±20ms | ±35ms | ±49ms | ±127ms | > 164ms |
+
+</details>
 
 #### Score Formula
 
@@ -951,10 +971,13 @@ Acc =  ───────────────── × 100
 | Judgement | Weight (V_j) |
 |-----------|-------------|
 | Marvelous | 100 |
-| Perfect | 98 |
+| Perfect | 98.25 |
 | Great | 65 |
 | Good | 25 |
-| Miss | 0 |
+| Okay | −100 |
+| Miss | −50 |
+
+> Okay and Miss have **negative weights**, so they actively reduce accuracy. This means accuracy can drop below 0%.
 
 #### Grade Thresholds
 
@@ -972,16 +995,22 @@ Acc =  ───────────────── × 100
 
 | Tier | Criteria |
 |------|----------|
-| PFC | All Marvelous, no misses |
-| FC | No Good or Miss |
-| SDCB | < 10 misses |
-| Clear | ≥ 10 misses |
+| PFC | All Marvelous, no combo breaks |
+| FC | No Okay or Miss |
+| SDCB | < 10 combo breaks |
+| Clear | ≥ 10 combo breaks |
 
 #### Combo Behavior
 
 | Maintains Combo | Breaks Combo |
 |----------------|--------------|
-| Marvelous, Perfect, Great | Good, Miss |
+| Marvelous, Perfect, Great, Good | Okay, Miss |
+
+#### Settings
+
+| Setting | Options | Default |
+|---------|---------|---------|
+| Judgement Difficulty | Peaceful / Lenient / Chill / Standard / Strict / Tough / Extreme / Impossible | Standard |
 
 ---
 
@@ -989,16 +1018,16 @@ Acc =  ───────────────── × 100
 
 All values in milliseconds (±ms from perfect). Default settings for all systems.
 
-| System | Tier 1 (Best) | Tier 2 | Tier 3 | Tier 4 | Tier 5 | Miss |
-|--------|--------------|--------|--------|--------|--------|------|
-| **Wife3** (J4) | ±22 (Marv) | ±45 (Perf) | ±90 (Great) | ±135 (Good) | ±180 (Bad) | — |
-| **osu!mania** (OD8) | ±16 (MAX) | ±40 (300) | ±73 (200) | ±103 (100) | ±127 (50) | > 127 |
-| **ITG** (1.0×) | ±21.5 (Fant) | ±43 (Exc) | ±102 (Great) | ±135 (Dec) | ±180 (WO) | — |
-| **Ruthless** (10ms) | ±10 (Flaw) | ±20 (Prec) | ±30 (Great) | ±40 (Good) | ±50–100 | > 100 |
-| **O2Jam** (fixed) | ±33 (COOL) | ±67 (GOOD) | ±100 (BAD) | — | — | > 100 |
-| **DJMAX** | ±16 (MAX100) | ±33 (MAX90) | ±66 (GOOD) | ±100 (BAD) | — | > 100 |
-| **IIDX** | ±16.67 (PGR) | ±33.33 (GR) | ±66.67 (GOOD) | ±100 (BAD) | ±180 (AWFUL) | > 180 |
-| **Quaver** | ±18 (Marv) | ±43 (Perf) | ±76 (Great) | ±106 (Good) | — | > 106 |
+| System | Tier 1 (Best) | Tier 2 | Tier 3 | Tier 4 | Tier 5 | Tier 6 | Miss |
+|--------|--------------|--------|--------|--------|--------|--------|------|
+| **Wife3** (J4) | ±22 (Marv) | ±45 (Perf) | ±90 (Great) | ±135 (Good) | ±180 (Bad) | — | — |
+| **osu!mania** (OD8) | ±16 (MAX) | ±40 (300) | ±73 (200) | ±103 (100) | ±127 (50) | — | > 127 |
+| **ITG** (1.0×) | ±21.5 (Fant) | ±43 (Exc) | ±102 (Great) | ±135 (Dec) | ±180 (WO) | — | — |
+| **Ruthless** (10ms) | ±10 (Flaw) | ±20 (Prec) | ±30 (Great) | ±40 (Good) | ±50 (Ok) | ±50–100 | > 100 |
+| **O2Jam** (fixed) | ±33 (COOL) | ±67 (GOOD) | ±100 (BAD) | — | — | — | > 100 |
+| **DJMAX** | ±16 (MAX100) | ±33 (MAX90) | ±66 (GOOD) | ±100 (BAD) | — | — | > 100 |
+| **IIDX** | ±16.67 (PGR) | ±33.33 (GR) | ±66.67 (GOOD) | ±100 (BAD) | ±180 (AWFUL) | — | > 180 |
+| **Quaver** (Std) | ±18 (Marv) | ±43 (Perf) | ±76 (Great) | ±106 (Good) | ±127 (Okay) | — | > 164 |
 
 ### Strictest → Most Lenient (Best Judgement Window)
 
@@ -1006,7 +1035,7 @@ All values in milliseconds (±ms from perfect). Default settings for all systems
 2. **osu!mania** — 16ms (fixed MAX window)
 3. **DJMAX** — 16ms
 4. **IIDX** — 16.67ms
-5. **Quaver** — 18ms
+5. **Quaver** — 18ms (Standard default, configurable down to 8ms at Impossible)
 6. **Wife3** — 22ms (J4 default, configurable down to 8.8ms at J9)
 7. **ITG** — 21.5ms (configurable)
 8. **O2Jam** — 33ms (fixed) / BPM-dependent
@@ -1022,7 +1051,7 @@ What accuracy do you need for the "best" achievable grade (below perfect)?
 | Wife3 | AAAAA | 99.70% | AAAA | 99.50% |
 | osu!mania | SS | 100% | S | > 95% |
 | ITG | ★★★★ | 100% | ★★★ | ≥ 99% |
-| Ruthless | X+ | 99.00% | X | 98.50% |
+| Ruthless | XX | 99.50% | X+ | 99.00% |
 | O2Jam | SSS | 100% | SS | ≥ 99% |
 | DJMAX | S | 97.00% | A | ≥ 90% |
 | IIDX | AAA | 88.89% | AA | 77.78% |
@@ -1041,10 +1070,14 @@ Color-coded timing feedback (e.g. "+12.5ms") that appears on-screen after each n
 Shows **all 10 scoring systems side by side** during gameplay — score, accuracy, grade, and FC tier for each. Useful for comparing how different systems evaluate the same performance.
 
 ### Rating Popups
-Optionally replaces Psych Engine's default rating images (sick/good/bad/shit) with custom sprites matching the active scoring system's judgement names. Place images in `images/ratings/[system]/[judgement].png`.
+Replaces Psych Engine's default rating images (sick/good/bad/shit) with custom sprites matching the active scoring system's judgement names. Supports both **individual images** (`images/ratings/[system]/[judgement].png`) and **spritesheets** (`images/ratings/[system]/spritesheet.png` + `.xml`). Individual images override spritesheet entries when both exist.
+
+Optional per-system **theme.json** (`images/ratings/[system]/theme.json`) can configure scale, antialiasing, framerate, tween duration, velocity, and per-judgement offsets. All of these are also configurable via Mod Settings.
+
+For osu!mania and OsuManiaV2, hold note **heads** do not show rating popups — only the last **tail** release shows a popup. This matches the official behavior where the hold result is shown at the end.
 
 ### Judgement Counter
-Displays a breakdown of judgement counts during gameplay.
+Displays a real-time breakdown of judgement counts during gameplay. Automatically uses labels and colors from the active scoring system. For osu!mania and OsuManiaV2, the counter reads tallies directly from the scoring system (including tail judgements) rather than classifying hits independently.
 
 ---
 
@@ -1058,19 +1091,22 @@ Displays a breakdown of judgement counts during gameplay.
    ├── data/
    │   └── settings.json
    ├── scripts/
-   │   ├── Wife3 Scoring System.hx
-   │   ├── OsuMania Scoring System.hx
-   │   ├── OsuManiaV2 Scoring System.hx
-   │   ├── ITG Scoring System.hx
-   │   ├── Ruthless Scoring System.hx
-   │   ├── O2Jam Scoring System.hx
-   │   ├── DJMAX Scoring System.hx
-   │   ├── IIDX Scoring System.hx
-   │   ├── Quaver Scoring System.hx
-   │   ├── Timing Display.hx
-   │   ├── Score Comparison.hx
-   │   ├── Rating Popups.hx
-   │   └── Judgement Counter.hx
+   │   ├── Loader.hx                    (auto-loads only needed scripts)
+   │   ├── scoring/
+   │   │   ├── Wife3 Scoring System.hx
+   │   │   ├── OsuMania Scoring System.hx
+   │   │   ├── OsuManiaV2 Scoring System.hx
+   │   │   ├── ITG Scoring System.hx
+   │   │   ├── Ruthless Scoring System.hx
+   │   │   ├── O2Jam Scoring System.hx
+   │   │   ├── DJMAX Scoring System.hx
+   │   │   ├── IIDX Scoring System.hx
+   │   │   └── Quaver Scoring System.hx
+   │   └── extras/
+   │       ├── Timing Display.hx
+   │       ├── Score Comparison.hx
+   │       ├── Rating Popups.hx
+   │       └── Judgement Counter.lua
    └── images/
        └── ratings/          (optional custom rating popup images)
    ```
@@ -1088,12 +1124,20 @@ All settings are configurable through Psych Engine's **Mod Settings** menu. No c
 | Setting | Description | Default |
 |---------|-------------|---------|
 | Scoring System | Select active system | Psych |
-| Replace Score Text | Override default HUD text | On |
-| Custom Rating Popups | Use system-specific rating images | Off |
-| Show Timing Display | Show ms timing feedback | On |
-| Use Kade Engine Style | Alternative score text format | Off |
-| Show Score Comparison | Show all systems side by side | Off |
 | Enable Scoring Debug Output | Print debug info | Off |
+| Replace Score Text | Override default HUD text | On |
+| Show Timing Display | Show ms timing feedback | On |
+| Show Judgement Counter | Show real-time judgement tally | On |
+| Show Score Comparison | Show all systems side by side | Off |
+| Use Kade Engine Style | Alternative score text format | Off |
+| Custom Rating Popups | Use system-specific rating images | Off |
+| Use Theme Defaults | Read scale/antialiasing from theme.json | Off |
+| Rating Popup Scale | Scale multiplier for popup sprites | 1.0 |
+| Rating Popup Antialiasing | Antialiasing mode (ClientPrefs / On / Off) | ClientPrefs |
+| Rating Popup Framerate | Animation framerate for spritesheets | 60 |
+| Rating Popup Fade Duration | Fade-out tween duration (seconds) | 0.1 |
+| Rating Popup Velocity X | Horizontal velocity of popup sprites | 0.0 |
+| Rating Popup Velocity Y | Vertical velocity of popup sprites | −70.0 |
 
 ### Per-System Settings
 
@@ -1101,11 +1145,11 @@ All settings are configurable through Psych Engine's **Mod Settings** menu. No c
 |--------|---------|-------------|
 | Wife3 | Judge Preset (1–9) | Timing strictness preset |
 | Wife3 | Judge Scale (0.009–4.0) | Custom timing scale (overrides preset) |
-| Wife3 | Use Etterna FC Tier Names | PFC vs SFC naming |
 | osu!mania V1/V2 | Overall Difficulty (0–10) | Timing window strictness |
 | ITG | Window Scale (0.1–4.0) | Timing window multiplier |
-| Ruthless | Perfect Window (0–25ms) | Flawless timing threshold |
+| Ruthless | Perfect Window (0–15ms) | Flawless timing threshold |
 | O2Jam | BPM-Based Windows | Authentic BPM-scaling toggle |
+| Quaver | Judgement Difficulty | Preset: Peaceful → Impossible |
 
 ---
 
@@ -1147,10 +1191,55 @@ Every system exposes:
 | `{prefix}_getGrade(percent)` | String | Letter grade for given accuracy |
 | `{prefix}_getRatingFC()` | String | FC tier string |
 | `{prefix}_formatPercent(value)` | String | Formatted percentage string |
-| `{prefix}_getJudgement(offsetMs)` | String | Judgement name for timing offset |
-| `{prefix}_getHitWindow(judgement)` | Float | Window size for judgement name |
 | `{prefix}_setEnabled(bool)` | Void | Enable/disable system |
 | `{prefix}_resetScoring()` | Void | Reset all state |
+
+Most systems also expose:
+
+| Callback | Returns | Description |
+|----------|---------|-------------|
+| `{prefix}_getJudgement(offsetMs)` | String | Judgement name for timing offset |
+| `{prefix}_getHitWindow(judgement)` | Float | Window size for judgement name |
+
+> **Note:** Wife3 uses `wife3_getTimingWindow(windowType)` instead of `getHitWindow`, and does not expose `getJudgement`. Ruthless uses `ruthless_getTimingWindow(windowType)` instead of `getHitWindow`.
+
+### System-Specific Callbacks
+
+| System | Callback | Description |
+|--------|----------|-------------|
+| Wife3 | `wife3_setJudgeScale(scale)` | Set custom timing scale |
+| Wife3 | `wife3_setJudgePreset(preset)` | Set judge preset (1–9) |
+| Wife3 | `wife3_getJudgeScale()` | Get current timing scale |
+| Wife3 | `wife3_getJudgePreset()` | Get nearest preset for current scale |
+| Wife3 | `wife3_getTimingWindow(windowType)` | Get ms window for judgement type |
+| osu!mania V1 | `osu_getTailJudgement(offsetMs)` | Judgement with 1.5× lenient tail windows |
+| Ruthless | `ruthless_getTimingWindow(windowType)` | Get ms window for judgement type |
+| Ruthless | `ruthless_setPerfectWindow(ms)` | Set perfect window (0–15ms) |
+| Ruthless | `ruthless_getPerfectWindow()` | Get current perfect window |
+| ITG | `itg_setWindowScale(scale)` | Set timing window scale |
+| ITG | `itg_getWindowScale()` | Get current window scale |
+| O2Jam | `o2jam_getCombo()` | Get current combo |
+| O2Jam | `o2jam_setUseBPMWindows(bool)` | Enable/disable BPM mode |
+| O2Jam | `o2jam_getUseBPMWindows()` | Check BPM mode status |
+| O2Jam | `o2jam_updateBPMWindows()` | Recalculate windows from BPM |
+| DJMAX | `djmax_getCombo()` | Get current combo |
+| IIDX | `iidx_getExRate()` | Get EX Rate % (used for grading) |
+| IIDX | `iidx_getCombo()` | Get current combo |
+| Quaver | `quaver_getCombo()` | Get current combo |
+
+### Judgement Counter Variables
+
+Scoring systems expose their judgement counts via `setVar()` for use by the Judgement Counter and other scripts:
+
+| System | Variables |
+|--------|-----------|
+| Wife3 | `wife3_marvelousHits`, `wife3_perfectHits`, `wife3_greatHits`, `wife3_goodHits`, `wife3_badHits` |
+| osu!mania V1 | `osu_maxHits`, `osu_300Hits`, `osu_200Hits`, `osu_100Hits`, `osu_50Hits` |
+| osu!mania V2 | `osuv2_maxHits`, `osuv2_300Hits`, `osuv2_200Hits`, `osuv2_100Hits`, `osuv2_50Hits` |
+
+### Script Loader
+
+The pack includes a `Loader.hx` script that dynamically loads only the scoring systems and extras needed based on the current Mod Settings. Scoring system scripts are **not** placed in the global `scripts/` directory — the Loader reads `data/settings.json` and initializes only the active system (and comparison systems if enabled). This prevents unnecessary script overhead.
 
 ---
 
