@@ -66,9 +66,10 @@ local judgementTexts = {}
 local counterEnabled = true
 
 -- Scoring system detection
-local scoringSystem = 'Psych' -- 'Psych', 'Wife3', 'OsuMania', 'ITG', 'Ruthless', 'IIDX', 'DJMAX', 'Quaver'
+local scoringSystem = 'Psych' -- 'Psych', 'Wife3', 'OsuMania', 'OsuManiaV2', 'ITG', 'Ruthless', 'IIDX', 'DJMAX', 'Quaver'
 local wife3Available = false
 local osuAvailable = false
+local osuv2Available = false
 local itgAvailable = false
 local ruthlessAvailable = false
 local iidxAvailable = false
@@ -89,6 +90,12 @@ end
 local function checkOsuAvailability()
     osuAvailable = (getVar('osu_enabled') ~= nil and getVar('osu_enabled') == true)
     return osuAvailable
+end
+
+-- Check if osu!mania V2 scoring system is available
+local function checkOsuV2Availability()
+    osuv2Available = (getVar('osuv2_enabled') ~= nil and getVar('osuv2_enabled') == true)
+    return osuv2Available
 end
 
 -- Check if ITG scoring system is available
@@ -130,6 +137,7 @@ local function detectScoringSystem()
 
     checkWife3Availability()
     checkOsuAvailability()
+    checkOsuV2Availability()
     checkITGAvailability()
     checkRuthlessAvailability()
     checkIIDXAvailability()
@@ -142,6 +150,8 @@ local function detectScoringSystem()
             scoringSystem = 'Wife3'
         elseif osuAvailable then
             scoringSystem = 'OsuMania'
+        elseif osuv2Available then
+            scoringSystem = 'OsuManiaV2'
         elseif itgAvailable then
             scoringSystem = 'ITG'
         elseif ruthlessAvailable then
@@ -184,7 +194,7 @@ local function getJudgmentCounts()
             { count = tier4Count },
             { count = missCount }
         }
-    elseif scoringSystem == 'Wife3' or scoringSystem == 'OsuMania' or scoringSystem == 'ITG' or scoringSystem == 'Ruthless' or scoringSystem == 'IIDX' then
+    elseif scoringSystem == 'Wife3' or scoringSystem == 'OsuMania' or scoringSystem == 'OsuManiaV2' or scoringSystem == 'ITG' or scoringSystem == 'Ruthless' or scoringSystem == 'IIDX' then
         if scoringSystem == 'Ruthless' then
             return {
                 { count = tier1Count },
@@ -236,6 +246,15 @@ local function getJudgmentDefinitions()
             { name = 'miss',  label = 'Miss', color = 'FF8000' }
         }
     elseif scoringSystem == 'OsuMania' then
+        return {
+            { name = 'tier1', label = 'MAX',  color = '00FFFF' },
+            { name = 'tier2', label = '300',  color = 'FFFF00' },
+            { name = 'tier3', label = '200',  color = '00FF00' },
+            { name = 'tier4', label = '100',  color = '0088FF' },
+            { name = 'tier5', label = '50',   color = '888888' },
+            { name = 'miss',  label = 'Miss', color = 'FF0000' }
+        }
+    elseif scoringSystem == 'OsuManiaV2' then
         return {
             { name = 'tier1', label = 'MAX',  color = '00FFFF' },
             { name = 'tier2', label = '300',  color = 'FFFF00' },
@@ -375,15 +394,16 @@ end
 local function classifyHit(noteDiff)
     local absOffset = math.abs(noteDiff)
 
-    if scoringSystem == 'OsuMania' then
-        -- osu!mania windows (OD 8 defaults: 16, 40, 73, 103, 127)
+    if scoringSystem == 'OsuMania' or scoringSystem == 'OsuManiaV2' then
+        -- osu!mania windows using OD from the scoring system
+        local od = getVar('osu_od') or getVar('osuv2_od') or 8
         if absOffset <= 16 then
             return 1 -- MAX
-        elseif absOffset <= 40 then
+        elseif absOffset <= (64 - 3 * od) then
             return 2 -- 300
-        elseif absOffset <= 73 then
+        elseif absOffset <= (97 - 3 * od) then
             return 3 -- 200
-        elseif absOffset <= 103 then
+        elseif absOffset <= (127 - 3 * od) then
             return 4 -- 100
         else
             return 5 -- 50
@@ -504,6 +524,25 @@ end
 
 function onUpdatePost(elapsed)
     if not counterEnabled then return end
+
+    -- osu!mania: read counters directly from the scoring system
+    -- This ensures tail release judgements (with 1.5x lenient windows) are counted correctly
+    if scoringSystem == 'OsuMania' and osuAvailable then
+        tier1Count = getVar('osu_maxHits') or 0
+        tier2Count = getVar('osu_300Hits') or 0
+        tier3Count = getVar('osu_200Hits') or 0
+        tier4Count = getVar('osu_100Hits') or 0
+        tier5Count = getVar('osu_50Hits') or 0
+        missCount = getProperty('songMisses') or 0
+    elseif scoringSystem == 'OsuManiaV2' and osuv2Available then
+        tier1Count = getVar('osuv2_maxHits') or 0
+        tier2Count = getVar('osuv2_300Hits') or 0
+        tier3Count = getVar('osuv2_200Hits') or 0
+        tier4Count = getVar('osuv2_100Hits') or 0
+        tier5Count = getVar('osuv2_50Hits') or 0
+        missCount = getProperty('songMisses') or 0
+    end
+
     updateJudgmentTexts()
 end
 
@@ -513,8 +552,14 @@ function goodNoteHit(id, direction, noteType, isSustainNote)
         return
     end
 
+    -- osu!mania: counters are read from the scoring system in onUpdatePost
+    -- (includes tail judgements with 1.5x lenient windows)
+    if (scoringSystem == 'OsuMania' and osuAvailable) or (scoringSystem == 'OsuManiaV2' and osuv2Available) then
+        return
+    end
+
     -- Psych mode: read the engine's own rating
-    -- Wife3/osu!mania: classify via timing windows (like the old version)
+    -- Other systems: classify via timing windows
     if scoringSystem == 'Psych' then
         local rating = getPropertyFromGroup('notes', id, 'rating')
 
@@ -551,6 +596,12 @@ end
 
 function noteMiss(id, direction, noteType, isSustainNote)
     if not counterEnabled then return end
+
+    -- osu!mania: miss count is read from the scoring system in onUpdatePost
+    if (scoringSystem == 'OsuMania' and osuAvailable) or (scoringSystem == 'OsuManiaV2' and osuv2Available) then
+        return
+    end
+
     if not isSustainNote then
         missCount = missCount + 1
     end

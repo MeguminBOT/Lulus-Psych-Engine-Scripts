@@ -114,6 +114,7 @@ var ratingPopups_velocityY = -75;
 var ratingPopups_spritesheetFrames = null;
 var ratingPopups_offsets = null;
 var ratingPopups_graphicCache = null;
+var ratingPopups_judgeSprites = [];
 
 // ========================================
 // SETTINGS LOADER
@@ -605,13 +606,14 @@ function spawnPopup(judgement:String) {
 	var assetName = getAssetName(normalized);
 
 	// Clear old popups when comboStacking is disabled
-	if (!ClientPrefs.data.comboStacking && game.comboGroup.members.length > 0) {
-		for (spr in game.comboGroup) {
+	if (!ClientPrefs.data.comboStacking && ratingPopups_judgeSprites.length > 0) {
+		for (spr in ratingPopups_judgeSprites) {
 			if (spr == null)
 				continue;
-			game.comboGroup.remove(spr);
+			game.remove(spr);
 			spr.destroy();
 		}
+		ratingPopups_judgeSprites = [];
 	}
 
 	var placement = FlxG.width * 0.35;
@@ -679,11 +681,13 @@ function spawnPopup(judgement:String) {
 	popup.updateHitbox();
 	popup.cameras = [game.camHUD];
 
-	game.comboGroup.add(popup);
+	game.add(popup);
+	ratingPopups_judgeSprites.push(popup);
 
 	FlxTween.tween(popup, {alpha: 0}, ratingPopups_tweenDuration / game.playbackRate, {
 		onComplete: function(tween:FlxTween) {
-			game.comboGroup.remove(popup);
+			game.remove(popup);
+			ratingPopups_judgeSprites.remove(popup);
 			popup.destroy();
 		},
 		startDelay: Conductor.crochet * 0.001 / game.playbackRate
@@ -706,6 +710,9 @@ function onCreate() {
 	loadSpritesheet();
 	cacheGraphics();
 
+	// Expose spawnPopup so scoring scripts can trigger release popups
+	setVar('ratingPopups_spawnPopup', spawnPopup);
+
 	debug('Custom rating popups enabled for: ' + ratingPopups_activeSystem);
 }
 
@@ -713,7 +720,26 @@ function goodNoteHit(note:Note) {
 	if (!ratingPopups_enabled || ratingPopups_activeSystem == 'Psych')
 		return;
 
-	if (note.isSustainNote || !note.mustPress)
+	if (!note.mustPress)
+		return;
+
+	// Systems that judge sustain tails: only show popup on the last tail piece
+	if (note.isSustainNote) {
+		if (ratingPopups_activeSystem == 'OsuMania' || ratingPopups_activeSystem == 'OsuManiaV2') {
+			if (note.parent == null)
+				return;
+			var parentTail = note.parent.tail;
+			if (parentTail == null || parentTail.length == 0)
+				return;
+			if (parentTail[parentTail.length - 1] != note)
+				return;
+		} else {
+			return;
+		}
+	}
+
+	// osu!mania: suppress head popup for hold notes (judgement shown at tail release instead)
+	if ((ratingPopups_activeSystem == 'OsuMania' || ratingPopups_activeSystem == 'OsuManiaV2') && note.tail != null && note.tail.length > 0)
 		return;
 
 	// Calculate timing offset (same method as scoring systems)
