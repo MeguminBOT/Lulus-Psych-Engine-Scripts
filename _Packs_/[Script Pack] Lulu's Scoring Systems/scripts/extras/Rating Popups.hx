@@ -75,6 +75,14 @@
 				scale         - Scale multiplier for this system's popups.
 								Used when "Use Theme Defaults" is on.
 								1.0 = default size, 0.5 = half, 2.0 = double.
+				framerate     - Animation framerate for spritesheet popups.
+								Default: 60. Only affects animated popups.
+				tweenDuration - Duration (seconds) of the fade-out tween.
+								Default: 0.1.
+				velocityX     - Horizontal velocity of the popup sprite.
+								Default: 0. Negative = left, positive = right.
+				velocityY     - Vertical velocity of the popup sprite.
+								Default: -75. Negative = upward, positive = downward.
 				offsets       - Per-judgement [x, y] position adjustments.
 								Applied after positioning. Works for both
 								individual images and spritesheet animations.
@@ -99,6 +107,10 @@ var ratingPopups_antialiasing = 'ClientPrefs';
 var ratingPopups_useThemeDefaults = false;
 var ratingPopups_themeAA = true;
 var ratingPopups_themeScale = 1.0;
+var ratingPopups_framerate = 60;
+var ratingPopups_tweenDuration = 0.1;
+var ratingPopups_velocityX = 0;
+var ratingPopups_velocityY = -75;
 var ratingPopups_spritesheetFrames = null;
 var ratingPopups_offsets = null;
 var ratingPopups_graphicCache = null;
@@ -131,6 +143,18 @@ function loadSettings() {
 
 	if ((value = getModSetting('scoring_debug')) != null)
 		ratingPopups_debug = value;
+
+	if ((value = getModSetting('scoring_ratingFramerate')) != null)
+		ratingPopups_framerate = value;
+
+	if ((value = getModSetting('scoring_ratingTweenDuration')) != null)
+		ratingPopups_tweenDuration = value;
+
+	if ((value = getModSetting('scoring_ratingVelocityX')) != null)
+		ratingPopups_velocityX = value;
+
+	if ((value = getModSetting('scoring_ratingVelocityY')) != null)
+		ratingPopups_velocityY = value;
 }
 
 // ========================================
@@ -493,6 +517,14 @@ function loadSpritesheet() {
 			ratingPopups_themeAA = Reflect.field(theme, 'antialiasing');
 		if (Reflect.hasField(theme, 'scale'))
 			ratingPopups_themeScale = Reflect.field(theme, 'scale');
+		if (Reflect.hasField(theme, 'framerate'))
+			ratingPopups_framerate = Reflect.field(theme, 'framerate');
+		if (Reflect.hasField(theme, 'tweenDuration'))
+			ratingPopups_tweenDuration = Reflect.field(theme, 'tweenDuration');
+		if (Reflect.hasField(theme, 'velocityX'))
+			ratingPopups_velocityX = Reflect.field(theme, 'velocityX');
+		if (Reflect.hasField(theme, 'velocityY'))
+			ratingPopups_velocityY = Reflect.field(theme, 'velocityY');
 		debug('Theme loaded: ' + themePath);
 	}
 
@@ -595,7 +627,7 @@ function spawnPopup(judgement:String) {
 	// Priority 2: Spritesheet animation
 	else if (ratingPopups_spritesheetFrames != null) {
 		popup.frames = ratingPopups_spritesheetFrames;
-		popup.animation.addByPrefix(assetName, assetName, 24, false);
+		popup.animation.addByPrefix(assetName, assetName, ratingPopups_framerate, false);
 		if (popup.animation.getByName(assetName) == null) {
 			popup.destroy();
 			debug('No animation prefix "' + assetName + '" in spritesheet');
@@ -621,8 +653,8 @@ function spawnPopup(judgement:String) {
 	popup.x = placement - 40;
 	popup.y = popup.y - 60;
 	popup.acceleration.y = 550 * game.playbackRate * game.playbackRate;
-	popup.velocity.y = -FlxG.random.int(140, 175) * game.playbackRate;
-	popup.velocity.x = -FlxG.random.int(0, 10) * game.playbackRate;
+	popup.velocity.y = ratingPopups_velocityY * game.playbackRate;
+	popup.velocity.x = ratingPopups_velocityX * game.playbackRate;
 	popup.x = popup.x + ClientPrefs.data.comboOffset[0];
 	popup.y = popup.y - ClientPrefs.data.comboOffset[1];
 
@@ -649,7 +681,7 @@ function spawnPopup(judgement:String) {
 
 	game.comboGroup.add(popup);
 
-	FlxTween.tween(popup, {alpha: 0}, 0.1 / game.playbackRate, {
+	FlxTween.tween(popup, {alpha: 0}, ratingPopups_tweenDuration / game.playbackRate, {
 		onComplete: function(tween:FlxTween) {
 			game.comboGroup.remove(popup);
 			popup.destroy();

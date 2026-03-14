@@ -16,17 +16,59 @@
 		"options": ["Psych", "Wife3", "OsuMania", "OsuManiaV2", "ITG", "Ruthless", "O2Jam", "DJMAX", "IIDX", "Quaver"]
 	},
 	{
+		"save": "scoring_debug",
+		"name": "Enable Scoring Debug Output",
+		"type": "bool",
+		"description": "Enable debug output for the active scoring system",
+		"value": false
+	},
+	{
 		"save": "scoring_replaceScoreText",
 		"name": "Replace Score Text",
 		"type": "bool",
 		"description": "Replace Psych Engine's default score text updates.\nIf disabled, the custom scoring system will still calculate scores and accuracy\nbut won't update the score text on screen.",
 		"value": true
 	},
+		{
+		"save": "scoring_showTimingDisplay",
+		"name": "Show Timing Display",
+		"type": "bool",
+		"description": "Show timing feedback in milliseconds when hitting notes\nColor-coded based on the selected scoring system's judgement tiers",
+		"value": true
+	},
+	{
+		"save": "scoring_showJudgementCounter",
+		"name": "Show Judgement Counter",
+		"type": "bool",
+		"description": "Show a real-time judgement counter displaying hit accuracy statistics\nAutomatically uses labels from the active scoring system",
+		"value": true
+	},
+	{
+		"save": "scoring_showComparison",
+		"name": "Show Score Comparison",
+		"type": "bool",
+		"description": "Show multiple scoring systems at the same time\nUseful for comparing accuracy and score across systems\n\nAffects performance: Enabling more scoring systems will increase CPU usage",
+		"value": false
+	},
+	{
+		"save": "scoring_kadeEngineStyle",
+		"name": "Use Kade Engine Style",
+		"type": "bool",
+		"description": "Use Kade Engine style score text formatting instead of Psych Engine style",
+		"value": false
+	},
 	{
 		"save": "scoring_ratingPopups",
 		"name": "Custom Rating Popups",
 		"type": "bool",
 		"description": "Replace Psych Engine's default rating popups (sick/good/bad/shit)\nwith sprites matching the active scoring system's judgement tiers.\n\nRequires images in: images/ratings/[system]/[judgement].png",
+		"value": false
+	},
+	{
+		"save": "scoring_useThemeDefaults",
+		"name": "Use Theme Defaults",
+		"type": "bool",
+		"description": "Use theme.json values for rating popup scale and antialiasing\ninstead of the settings above.\n\nWhen enabled, scale and antialiasing are read from:\nimages/ratings/[system]/theme.json",
 		"value": false
 	},
 	{
@@ -49,46 +91,46 @@
 		"options": ["ClientPrefs", "On", "Off"]
 	},
 	{
-		"save": "scoring_useThemeDefaults",
-		"name": "Use Theme Defaults",
-		"type": "bool",
-		"description": "Use theme.json values for rating popup scale and antialiasing\ninstead of the settings above.\n\nWhen enabled, scale and antialiasing are read from:\nimages/ratings/[system]/theme.json",
-		"value": false
+		"save": "scoring_ratingFramerate",
+		"name": "Rating Popup Framerate",
+		"type": "int",
+		"description": "Animation framerate for spritesheet rating popups.\nOnly affects animated popups (not individual images).",
+		"value": 60,
+		"min": 1,
+		"max": 120
 	},
 	{
-		"save": "scoring_showTimingDisplay",
-		"name": "Show Timing Display",
-		"type": "bool",
-		"description": "Show timing feedback in milliseconds when hitting notes\nColor-coded based on the selected scoring system's judgement tiers",
-		"value": true
+		"save": "scoring_ratingTweenDuration",
+		"name": "Rating Popup Fade Duration",
+		"type": "float",
+		"description": "Duration in seconds for the rating popup fade-out tween.\n\n0.1 = Default\n0.2 = Psych Engine Default",
+		"value": 0.1,
+		"min": 0.005,
+		"max": 2.0,
+		"step": 0.001,
+		"decimals": 4
 	},
 	{
-		"save": "scoring_showJudgementCounter",
-		"name": "Show Judgement Counter",
-		"type": "bool",
-		"description": "Show a real-time judgement counter displaying hit accuracy statistics\nAutomatically uses labels from the active scoring system",
-		"value": true
+		"save": "scoring_ratingVelocityX",
+		"name": "Rating Popup Velocity X",
+		"type": "float",
+		"description": "Horizontal velocity of rating popup sprites.\nNegative = left, Positive = right.\n0 = Default\n10 = Psych Engine default",
+		"value": 0.0,
+		"min": -500.0,
+		"max": 500.0,
+		"step": 5.0,
+		"decimals": 1
 	},
 	{
-		"save": "scoring_kadeEngineStyle",
-		"name": "Use Kade Engine Style",
-		"type": "bool",
-		"description": "Use Kade Engine style score text formatting instead of Psych Engine style",
-		"value": false
-	},
-	{
-		"save": "scoring_showComparison",
-		"name": "Show Score Comparison",
-		"type": "bool",
-		"description": "Show multiple scoring systems at the same time\nUseful for comparing accuracy and score across systems\n\nAffects performance: Enabling more scoring systems will increase CPU usage",
-		"value": false
-	},
-	{
-		"save": "scoring_debug",
-		"name": "Enable Scoring Debug Output",
-		"type": "bool",
-		"description": "Enable debug output for the active scoring system",
-		"value": false
+		"save": "scoring_ratingVelocityY",
+		"name": "Rating Popup Velocity Y",
+		"type": "float",
+		"description": "Vertical velocity of rating popup sprites.\nNegative = upward, Positive = downward.\n-70 = Default\n-140 = Psych Engine default",
+		"value": -70.0,
+		"min": -500.0,
+		"max": 500.0,
+		"step": 5.0,
+		"decimals": 1
 	},
 	{
 		"save": "wife3_header",
