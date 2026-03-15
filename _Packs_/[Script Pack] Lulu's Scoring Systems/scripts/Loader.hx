@@ -70,6 +70,10 @@ function onCreate() {
 	if (showJudgementCounter == null)
 		showJudgementCounter = true;
 
+	var showHitErrorBar = getModSetting('scoring_showHitErrorBar');
+	if (showHitErrorBar == null)
+		showHitErrorBar = false;
+
 	// Track which systems to load (avoid duplicates)
 	var systemsToLoad = new haxe.ds.StringMap();
 
@@ -116,6 +120,9 @@ function onCreate() {
 
 	if (showJudgementCounter)
 		loadExtraLua('Judgement Counter.lua');
+
+	if (showHitErrorBar)
+		loadExtra('Hit Error Bar.hx');
 
 	trace('[Loader] Finished loading scripts for system: ' + activeSystem + (showComparison ? ' (with comparison)' : ''));
 }

@@ -29,7 +29,21 @@
 		"description": "Replace Psych Engine's default score text updates.\nIf disabled, the custom scoring system will still calculate scores and accuracy\nbut won't update the score text on screen.",
 		"value": true
 	},
-		{
+	{
+		"save": "scoring_ratingPopups",
+		"name": "Custom Rating Popups",
+		"type": "bool",
+		"description": "Replace Psych Engine's default rating popups (sick/good/bad/shit)\nwith sprites matching the active scoring system's judgement tiers.\n\nRequires images in: images/ratings/[system]/[judgement].png",
+		"value": true
+	},
+	{
+		"save": "scoring_showHitErrorBar",
+		"name": "Show Hit Error Bar",
+		"type": "bool",
+		"description": "Show a horizontal hit error bar at the bottom of the screen\n\nReplaces the TimeBar and puts the Time text to the left side of the screen.",
+		"value": true
+	},
+	{
 		"save": "scoring_showTimingDisplay",
 		"name": "Show Timing Display",
 		"type": "bool",
@@ -58,10 +72,52 @@
 		"value": false
 	},
 	{
-		"save": "scoring_ratingPopups",
-		"name": "Custom Rating Popups",
+		"save": "heb_header",
+		"name": "-HIT ERROR BAR SETTINGS-",
+		"type": "string",
+		"description": "Settings for the hit error bar display",
+		"value": " ",
+		"options": [" ", " ", " ", " "]
+	},
+	{
+		"save": "scoring_hitErrorBarWidth",
+		"name": "Hit Error Bar Width",
+		"type": "int",
+		"description": "Width of the hit error bar in pixels\nDefault: 360",
+		"value": 360,
+		"min": 100,
+		"max": 800
+	},
+	{
+		"save": "scoring_hitErrorBarBgAlpha",
+		"name": "Hit Error Bar BG Opacity",
+		"type": "int",
+		"description": "Opacity of the hit error bar background\n0% = no background, 100% = fully opaque\nAdjusts in 5% increments",
+		"value": 0,
+		"min": 0,
+		"max": 100,
+		"step": 5
+	},
+	{
+		"save": "scoring_hitErrorBarSimpleColors",
+		"name": "Hit Error Bar Simple Colors",
 		"type": "bool",
-		"description": "Replace Psych Engine's default rating popups (sick/good/bad/shit)\nwith sprites matching the active scoring system's judgement tiers.\n\nRequires images in: images/ratings/[system]/[judgement].png",
+		"description": "Use standardized 3-color display (Cyan/Lime/Orange) like osu!\ninstead of the scoring system's native tier colors.\n\nTiming windows still respect each system's actual values.",
+		"value": false
+	},
+	{
+		"save": "rp_header",
+		"name": "-RATING POPUP SETTINGS-",
+		"type": "string",
+		"description": "Settings for custom rating popup sprites",
+		"value": " ",
+		"options": [" ", " ", " ", " "]
+	},
+	{
+		"save": "scoring_ratingLockToStrum",
+		"name": "Lock Popup to Strum",
+		"type": "bool",
+		"description": "Lock rating popup position to the player's strum line\ninstead of the default center-left placement.\n\nWhen enabled, popups appear centered on the first player strum.\nCombo offset is ignored when this is on.",
 		"value": false
 	},
 	{
@@ -69,7 +125,7 @@
 		"name": "Use Theme Defaults",
 		"type": "bool",
 		"description": "Use theme.json values for rating popup scale and antialiasing\ninstead of the settings below.\n\nWhen enabled, scale and antialiasing are read from:\nimages/ratings/[system]/theme.json",
-		"value": false
+		"value": true
 	},
 	{
 		"save": "scoring_ratingScale",
@@ -131,13 +187,6 @@
 		"max": 500.0,
 		"step": 5.0,
 		"decimals": 1
-	},
-	{
-		"save": "scoring_ratingLockToStrum",
-		"name": "Lock Popup to Strum",
-		"type": "bool",
-		"description": "Lock rating popup position to the player's strum line\ninstead of the default center-left placement.\n\nWhen enabled, popups appear centered on the first player strum.\nCombo offset is ignored when this is on.",
-		"value": false
 	},
 	{
 		"save": "jc_header",
