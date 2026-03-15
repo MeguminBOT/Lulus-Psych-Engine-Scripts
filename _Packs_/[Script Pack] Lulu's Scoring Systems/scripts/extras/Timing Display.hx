@@ -83,7 +83,7 @@ function loadSettings() {
 	// Load Ruthless perfect window for color thresholds
 	if ((value = getModSetting('ruthless_perfectWindow')) != null) {
 		var window:Float = value;
-		if (window >= 0.0 && window <= 25.0)
+		if (window >= 0.0 && window <= 15.0)
 			td_ruthlessPerfectWindow = window;
 	}
 }
@@ -166,11 +166,11 @@ function getTimingColor(absOffset:Float):FlxColor {
 	}
 
 	if (td_scoringSystem == 'ITG') {
-		if (absOffset <= 22.5 * td_itgWindowScale)
+		if (absOffset <= 21.5 * td_itgWindowScale)
 			return FlxColor.CYAN; // Fantastic
-		if (absOffset <= 45.0 * td_itgWindowScale)
+		if (absOffset <= 43.0 * td_itgWindowScale)
 			return FlxColor.YELLOW; // Excellent
-		if (absOffset <= 90.0 * td_itgWindowScale)
+		if (absOffset <= 102.0 * td_itgWindowScale)
 			return FlxColor.GREEN; // Great
 		if (absOffset <= 135.0 * td_itgWindowScale)
 			return FlxColor.MAGENTA; // Decent
@@ -222,24 +222,19 @@ function getTimingColor(absOffset:Float):FlxColor {
 			return FlxColor.CYAN; // PGREAT
 		if (absOffset <= 33.33)
 			return FlxColor.YELLOW; // GREAT
-		if (absOffset <= 100.0)
+		if (absOffset <= 66.67)
 			return FlxColor.GREEN; // GOOD
+		if (absOffset <= 100.0)
+			return FlxColor.BLUE; // BAD
 		if (absOffset <= 180.0)
-			return FlxColor.MAGENTA; // BAD
+			return FlxColor.MAGENTA; // AWFUL
 		return FlxColor.RED; // POOR
 	} else if (td_scoringSystem == 'Quaver') {
-		var quaverMarvWindow = getVar('quaver_marvelousWindow');
-		var quaverPerfWindow = getVar('quaver_perfectWindow');
-		var quaverGreatWindow = getVar('quaver_greatWindow');
-		var quaverGoodWindow = getVar('quaver_goodWindow');
-		if (quaverMarvWindow == null)
-			quaverMarvWindow = 18.0;
-		if (quaverPerfWindow == null)
-			quaverPerfWindow = 43.0;
-		if (quaverGreatWindow == null)
-			quaverGreatWindow = 76.0;
-		if (quaverGoodWindow == null)
-			quaverGoodWindow = 106.0;
+		var quaverGetWindow = getVar('quaver_getHitWindow');
+		var quaverMarvWindow = quaverGetWindow != null ? quaverGetWindow('marvelous') : 18.0;
+		var quaverPerfWindow = quaverGetWindow != null ? quaverGetWindow('perfect') : 43.0;
+		var quaverGreatWindow = quaverGetWindow != null ? quaverGetWindow('great') : 76.0;
+		var quaverGoodWindow = quaverGetWindow != null ? quaverGetWindow('good') : 106.0;
 		if (absOffset <= quaverMarvWindow)
 			return FlxColor.WHITE; // Marvelous
 		if (absOffset <= quaverPerfWindow)

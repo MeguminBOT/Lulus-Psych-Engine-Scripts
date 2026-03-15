@@ -44,6 +44,24 @@ local borderSize = 1.5     -- Text border/outline size
 local lineSpacing = 20 -- Spacing between judgment lines
 local textPadding = 10 -- Padding from background edges
 
+-- Scalable window settings (loaded from settings.json, used as classifyHit fallback)
+local wife3JudgeScale = 1.0
+local itgWindowScale = 1.0
+local ruthlessPerfectWindow = 10.0
+local quaverWindows = { 18, 43, 76, 106, 127 }
+
+-- Quaver difficulty presets (Marvelous, Perfect, Great, Good, Okay)
+local QUAVER_DIFFICULTIES = {
+    Peaceful   = { 23, 57, 101, 141, 169 },
+    Lenient    = { 21, 52, 91, 128, 153 },
+    Chill      = { 19, 47, 83, 116, 139 },
+    Standard   = { 18, 43, 76, 106, 127 },
+    Strict     = { 16, 39, 69, 96, 127 },
+    Tough      = { 14, 35, 62, 87, 127 },
+    Extreme    = { 13, 32, 57, 79, 127 },
+    Impossible = { 8, 20, 35, 49, 127 }
+}
+
 -- ========================================
 -- VARIABLES
 -- ========================================
@@ -57,6 +75,7 @@ local tier5Count = 0
 local tier6Count = 0
 local tier7Count = 0
 local missCount = 0
+local cbCount = 0
 
 -- UI elements
 local judgementBg = nil
@@ -75,6 +94,7 @@ local ruthlessAvailable = false
 local iidxAvailable = false
 local djmaxAvailable = false
 local quaverAvailable = false
+local o2jamAvailable = false
 
 -- ========================================
 -- HELPER FUNCTIONS
@@ -128,6 +148,12 @@ local function checkQuaverAvailability()
     return quaverAvailable
 end
 
+-- Check if O2Jam scoring system is available
+local function checkO2JamAvailability()
+    o2jamAvailable = (getVar('o2jam_enabled') ~= nil and getVar('o2jam_enabled') == true)
+    return o2jamAvailable
+end
+
 -- Detect active scoring system
 local function detectScoringSystem()
     local setting = getModSetting('scoring_system')
@@ -143,6 +169,7 @@ local function detectScoringSystem()
     checkIIDXAvailability()
     checkDJMAXAvailability()
     checkQuaverAvailability()
+    checkO2JamAvailability()
 
     -- Fallback detection if settings aren't available
     if setting == nil then
@@ -162,6 +189,8 @@ local function detectScoringSystem()
             scoringSystem = 'DJMAX'
         elseif quaverAvailable then
             scoringSystem = 'Quaver'
+        elseif o2jamAvailable then
+            scoringSystem = 'O2Jam'
         else
             scoringSystem = 'Psych'
         end
@@ -204,6 +233,7 @@ local function getJudgmentCounts()
                 { count = tier5Count },
                 { count = tier6Count },
                 { count = tier7Count },
+                { count = cbCount },
                 { count = missCount }
             }
         elseif scoringSystem == 'IIDX' then
@@ -387,10 +417,11 @@ local function resetJudgmentCounters()
     tier6Count = 0
     tier7Count = 0
     missCount = 0
+    cbCount = 0
     updateJudgmentTexts()
 end
 
--- Classify hit based on timing offset for Wife3/osu!mania
+-- Classify hit based on timing offset (fallback when scoring system script isn't loaded)
 local function classifyHit(noteDiff)
     local absOffset = math.abs(noteDiff)
 
@@ -409,21 +440,21 @@ local function classifyHit(noteDiff)
             return 5 -- 50
         end
     elseif scoringSystem == 'ITG' then
-        -- ITG windows (default scale 1.0: 22.5, 45, 90, 135, 180)
-        if absOffset <= 22.5 then
+        -- ITG windows (base: 21.5, 43, 102, 135, 180 * windowScale)
+        if absOffset <= 21.5 * itgWindowScale then
             return 1 -- Fantastic
-        elseif absOffset <= 45 then
+        elseif absOffset <= 43 * itgWindowScale then
             return 2 -- Excellent
-        elseif absOffset <= 90 then
+        elseif absOffset <= 102 * itgWindowScale then
             return 3 -- Great
-        elseif absOffset <= 135 then
+        elseif absOffset <= 135 * itgWindowScale then
             return 4 -- Decent
         else
             return 5 -- Way Off
         end
     elseif scoringSystem == 'Ruthless' then
-        -- Ruthless windows (10, 20, 30, 40, 50, 75, 100)
-        if absOffset <= 10 then
+        -- Ruthless windows (perfectWindow, 20, 30, 40, 50, 75, 100)
+        if absOffset <= ruthlessPerfectWindow then
             return 1 -- Flawless
         elseif absOffset <= 20 then
             return 2 -- Precise
@@ -439,7 +470,7 @@ local function classifyHit(noteDiff)
             return 7 -- Barely
         end
     elseif scoringSystem == 'IIDX' then
-        -- IIDX windows (16.67, 33.33, 66.67, 100, 180)
+        -- IIDX fixed windows (16.67, 33.33, 66.67, 100, 180)
         if absOffset <= 16.67 then
             return 1 -- PGreat
         elseif absOffset <= 33.33 then
@@ -452,7 +483,7 @@ local function classifyHit(noteDiff)
             return 5 -- Awful
         end
     elseif scoringSystem == 'O2Jam' then
-        -- O2Jam windows (cool ≤ 33ms, good ≤ 67ms, bad ≤ 100ms)
+        -- O2Jam fixed fallback windows (cool <= 33ms, good <= 67ms, bad <= 100ms)
         if absOffset <= 33 then
             return 1 -- Cool
         elseif absOffset <= 67 then
@@ -461,7 +492,7 @@ local function classifyHit(noteDiff)
             return 3 -- Bad
         end
     elseif scoringSystem == 'DJMAX' then
-        -- DJMAX windows (MAX100% ≤ 16ms, MAX90% ≤ 33ms, GOOD ≤ 66ms, BAD ≤ 100ms)
+        -- DJMAX fixed windows (MAX100% <= 16ms, MAX90% <= 33ms, GOOD <= 66ms, BAD <= 100ms)
         if absOffset <= 16 then
             return 1 -- MAX 100%
         elseif absOffset <= 33 then
@@ -472,27 +503,27 @@ local function classifyHit(noteDiff)
             return 4 -- Bad
         end
     elseif scoringSystem == 'Quaver' then
-        -- Quaver windows (Standard: 18, 43, 76, 106, 127)
-        if absOffset <= 18 then
+        -- Quaver windows (from difficulty preset)
+        if absOffset <= quaverWindows[1] then
             return 1 -- Marvelous
-        elseif absOffset <= 43 then
+        elseif absOffset <= quaverWindows[2] then
             return 2 -- Perfect
-        elseif absOffset <= 76 then
+        elseif absOffset <= quaverWindows[3] then
             return 3 -- Great
-        elseif absOffset <= 106 then
+        elseif absOffset <= quaverWindows[4] then
             return 4 -- Good
         else
             return 5 -- Okay
         end
     else
-        -- Wife3 windows
-        if absOffset <= 22 then
+        -- Wife3 windows (scaled by judge scale)
+        if absOffset <= 22 * wife3JudgeScale then
             return 1 -- Marvelous
-        elseif absOffset <= 45 then
+        elseif absOffset <= 45 * wife3JudgeScale then
             return 2 -- Perfect
-        elseif absOffset <= 90 then
+        elseif absOffset <= 90 * wife3JudgeScale then
             return 3 -- Great
-        elseif absOffset <= 135 then
+        elseif absOffset <= 135 * wife3JudgeScale then
             return 4 -- Good
         else
             return 5 -- Bad
@@ -509,6 +540,32 @@ function onCreate()
     if setting ~= nil then
         counterEnabled = setting
     end
+    -- Load scalable window settings (for classifyHit fallback)
+    local JUDGE_WINDOWS = { 4.0, 3.0, 2.0, 1.0, 0.9, 0.75, 0.6, 0.5, 0.4 }
+    local judgePreset = getModSetting('wife3_judgePreset')
+    if judgePreset ~= nil and judgePreset >= 1 and judgePreset <= 9 then
+        wife3JudgeScale = JUDGE_WINDOWS[judgePreset]
+    end
+    local judgeScale = getModSetting('wife3_judgeScale')
+    if judgeScale ~= nil and judgeScale >= 0.009 and judgeScale <= 4.0 then
+        wife3JudgeScale = judgeScale
+    end
+
+    local itgScale = getModSetting('itg_windowScale')
+    if itgScale ~= nil and itgScale >= 0.1 and itgScale <= 4.0 then
+        itgWindowScale = itgScale
+    end
+
+    local rPerfWin = getModSetting('ruthless_perfectWindow')
+    if rPerfWin ~= nil and rPerfWin >= 0.0 and rPerfWin <= 25.0 then
+        ruthlessPerfectWindow = rPerfWin
+    end
+
+    local qDiff = getModSetting('quaver_difficulty')
+    if qDiff ~= nil and QUAVER_DIFFICULTIES[qDiff] ~= nil then
+        quaverWindows = QUAVER_DIFFICULTIES[qDiff]
+    end
+
     detectScoringSystem()
 end
 
@@ -525,22 +582,62 @@ end
 function onUpdatePost(elapsed)
     if not counterEnabled then return end
 
-    -- osu!mania: read counters directly from the scoring system
-    -- This ensures tail release judgements (with 1.5x lenient windows) are counted correctly
+    -- Read hit tier counters from each scoring system (always matches their exact windows)
+    -- Miss count is tracked separately in noteMiss (songMisses includes sustain pieces)
     if scoringSystem == 'OsuMania' and osuAvailable then
         tier1Count = getVar('osu_maxHits') or 0
         tier2Count = getVar('osu_300Hits') or 0
         tier3Count = getVar('osu_200Hits') or 0
         tier4Count = getVar('osu_100Hits') or 0
         tier5Count = getVar('osu_50Hits') or 0
-        missCount = getProperty('songMisses') or 0
     elseif scoringSystem == 'OsuManiaV2' and osuv2Available then
         tier1Count = getVar('osuv2_maxHits') or 0
         tier2Count = getVar('osuv2_300Hits') or 0
         tier3Count = getVar('osuv2_200Hits') or 0
         tier4Count = getVar('osuv2_100Hits') or 0
         tier5Count = getVar('osuv2_50Hits') or 0
-        missCount = getProperty('songMisses') or 0
+    elseif scoringSystem == 'Wife3' and wife3Available then
+        tier1Count = getVar('wife3_marvelousHits') or 0
+        tier2Count = getVar('wife3_perfectHits') or 0
+        tier3Count = getVar('wife3_greatHits') or 0
+        tier4Count = getVar('wife3_goodHits') or 0
+        tier5Count = getVar('wife3_badHits') or 0
+    elseif scoringSystem == 'ITG' and itgAvailable then
+        tier1Count = getVar('itg_fantasticHits') or 0
+        tier2Count = getVar('itg_excellentHits') or 0
+        tier3Count = getVar('itg_greatHits') or 0
+        tier4Count = getVar('itg_decentHits') or 0
+        tier5Count = getVar('itg_wayOffHits') or 0
+    elseif scoringSystem == 'Ruthless' and ruthlessAvailable then
+        tier1Count = getVar('ruthless_flawlessHits') or 0
+        tier2Count = getVar('ruthless_preciseHits') or 0
+        tier3Count = getVar('ruthless_greatHits') or 0
+        tier4Count = getVar('ruthless_goodHits') or 0
+        tier5Count = getVar('ruthless_okHits') or 0
+        tier6Count = getVar('ruthless_sloppyHits') or 0
+        tier7Count = getVar('ruthless_barelyHits') or 0
+        cbCount = getVar('ruthless_comboBreaks') or 0
+    elseif scoringSystem == 'IIDX' and iidxAvailable then
+        tier1Count = getVar('iidx_pgreatHits') or 0
+        tier2Count = getVar('iidx_greatHits') or 0
+        tier3Count = getVar('iidx_goodHits') or 0
+        tier4Count = getVar('iidx_badHits') or 0
+        tier5Count = getVar('iidx_awfulHits') or 0
+    elseif scoringSystem == 'DJMAX' and djmaxAvailable then
+        tier1Count = getVar('djmax_max100Hits') or 0
+        tier2Count = getVar('djmax_max90Hits') or 0
+        tier3Count = getVar('djmax_goodHits') or 0
+        tier4Count = getVar('djmax_badHits') or 0
+    elseif scoringSystem == 'O2Jam' and o2jamAvailable then
+        tier1Count = getVar('o2jam_coolHits') or 0
+        tier2Count = getVar('o2jam_goodHits') or 0
+        tier3Count = getVar('o2jam_badHits') or 0
+    elseif scoringSystem == 'Quaver' and quaverAvailable then
+        tier1Count = getVar('quaver_marvelousHits') or 0
+        tier2Count = getVar('quaver_perfectHits') or 0
+        tier3Count = getVar('quaver_greatHits') or 0
+        tier4Count = getVar('quaver_goodHits') or 0
+        tier5Count = getVar('quaver_okayHits') or 0
     end
 
     updateJudgmentTexts()
@@ -548,34 +645,25 @@ end
 
 function goodNoteHit(id, direction, noteType, isSustainNote)
     if not counterEnabled then return end
-    if isSustainNote then
-        return
-    end
+    if isSustainNote then return end
 
-    -- osu!mania: counters are read from the scoring system in onUpdatePost
-    -- (includes tail judgements with 1.5x lenient windows)
-    if (scoringSystem == 'OsuMania' and osuAvailable) or (scoringSystem == 'OsuManiaV2' and osuv2Available) then
-        return
-    end
-
-    -- Psych mode: read the engine's own rating
-    -- Other systems: classify via timing windows
-    if scoringSystem == 'Psych' then
-        local rating = getPropertyFromGroup('notes', id, 'rating')
-
-        if rating == 'sick' then
-            tier1Count = tier1Count + 1
-        elseif rating == 'good' then
-            tier2Count = tier2Count + 1
-        elseif rating == 'bad' then
-            tier3Count = tier3Count + 1
-        elseif rating == 'shit' then
-            tier4Count = tier4Count + 1
+    -- Scoring systems with available scripts: counters are read in onUpdatePost
+    if scoringSystem ~= 'Psych' then
+        if (scoringSystem == 'OsuMania' and osuAvailable)
+            or (scoringSystem == 'OsuManiaV2' and osuv2Available)
+            or (scoringSystem == 'Wife3' and wife3Available)
+            or (scoringSystem == 'ITG' and itgAvailable)
+            or (scoringSystem == 'Ruthless' and ruthlessAvailable)
+            or (scoringSystem == 'IIDX' and iidxAvailable)
+            or (scoringSystem == 'DJMAX' and djmaxAvailable)
+            or (scoringSystem == 'O2Jam' and o2jamAvailable)
+            or (scoringSystem == 'Quaver' and quaverAvailable) then
+            return
         end
-    else
+
+        -- Fallback: scoring system selected but script not loaded, classify locally
         local noteDiff = math.abs(getPropertyFromGroup('notes', id, 'strumTime') - getSongPosition())
         local tier = classifyHit(noteDiff)
-
         if tier == 1 then
             tier1Count = tier1Count + 1
         elseif tier == 2 then
@@ -591,17 +679,26 @@ function goodNoteHit(id, direction, noteType, isSustainNote)
         elseif tier == 7 then
             tier7Count = tier7Count + 1
         end
+        return
+    end
+
+    -- Psych mode: read the engine's own rating
+    local rating = getPropertyFromGroup('notes', id, 'rating')
+    if rating == 'sick' then
+        tier1Count = tier1Count + 1
+    elseif rating == 'good' then
+        tier2Count = tier2Count + 1
+    elseif rating == 'bad' then
+        tier3Count = tier3Count + 1
+    elseif rating == 'shit' then
+        tier4Count = tier4Count + 1
     end
 end
 
 function noteMiss(id, direction, noteType, isSustainNote)
     if not counterEnabled then return end
 
-    -- osu!mania: miss count is read from the scoring system in onUpdatePost
-    if (scoringSystem == 'OsuMania' and osuAvailable) or (scoringSystem == 'OsuManiaV2' and osuv2Available) then
-        return
-    end
-
+    -- Count non-sustain misses directly
     if not isSustainNote then
         missCount = missCount + 1
     end
