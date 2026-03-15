@@ -133,6 +133,13 @@
 		"decimals": 1
 	},
 	{
+		"save": "scoring_ratingLockToStrum",
+		"name": "Lock Popup to Strum",
+		"type": "bool",
+		"description": "Lock rating popup position to the player's strum line\ninstead of the default center-left placement.\n\nWhen enabled, popups appear centered on the first player strum.\nCombo offset is ignored when this is on.",
+		"value": false
+	},
+	{
 		"save": "jc_header",
 		"name": "-JUDGEMENT COUNTER SETTINGS-",
 		"type": "string",

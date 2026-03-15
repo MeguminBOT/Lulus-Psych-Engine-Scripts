@@ -91,6 +91,7 @@ var ratingPopups_velocityX = 0;
 var ratingPopups_velocityY = -75;
 var ratingPopups_accelerationX = 0;
 var ratingPopups_accelerationY = 550;
+var ratingPopups_lockToStrum = false;
 var ratingPopups_spritesheetFrames = null;
 var ratingPopups_offsets = null;
 var ratingPopups_graphicCache = null;
@@ -136,6 +137,9 @@ function loadSettings() {
 
 	if ((value = getModSetting('scoring_ratingVelocityY')) != null)
 		ratingPopups_velocityY = value;
+
+	if ((value = getModSetting('scoring_ratingLockToStrum')) != null)
+		ratingPopups_lockToStrum = value;
 }
 
 // ========================================
@@ -635,25 +639,7 @@ function spawnPopup(judgement:String) {
 		popup.centerOrigin();
 	}
 
-	popup.screenCenter();
-	popup.x = placement - 40;
-	popup.y = popup.y - 60;
-	popup.acceleration.y = ratingPopups_accelerationY * game.playbackRate * game.playbackRate;
-	popup.acceleration.x = ratingPopups_accelerationX * game.playbackRate * game.playbackRate;
-	popup.velocity.y = ratingPopups_velocityY * game.playbackRate;
-	popup.velocity.x = ratingPopups_velocityX * game.playbackRate;
-	popup.x = popup.x + ClientPrefs.data.comboOffset[0];
-	popup.y = popup.y - ClientPrefs.data.comboOffset[1];
-
-	// Apply per-judgement offset from theme.json
-	if (ratingPopups_offsets != null) {
-		var off = Reflect.field(ratingPopups_offsets, assetName);
-		if (off != null) {
-			popup.x = popup.x + off[0];
-			popup.y = popup.y + off[1];
-		}
-	}
-
+	// Scale before positioning so width/height are final for centering calculations
 	popup.antialiasing = resolveAntialiasing();
 	popup.visible = !ClientPrefs.data.hideHud;
 
@@ -664,6 +650,43 @@ function spawnPopup(judgement:String) {
 		popup.setGraphicSize(Std.int(popup.width * PlayState.daPixelZoom * 0.25 * scale));
 
 	popup.updateHitbox();
+
+	// Re-center offsets after updateHitbox (which resets them) for animated sprites
+	if (isAnimated) {
+		popup.centerOffsets();
+		popup.centerOrigin();
+	}
+
+	popup.screenCenter();
+
+	if (ratingPopups_lockToStrum) {
+		// Center popup horizontally across all 4 player strums (same method as Timing Display)
+		var firstStrumX = game.playerStrums.members[0].x;
+		var lastStrumX = game.playerStrums.members[3].x;
+		var strumWidth = game.playerStrums.members[0].width;
+		var totalWidth = (lastStrumX + strumWidth) - firstStrumX;
+
+		popup.x = firstStrumX + (totalWidth / 2) - (popup.width / 2);
+		popup.y = popup.y - 60;
+	} else {
+		popup.x = placement - 40 + ClientPrefs.data.comboOffset[0];
+		popup.y = popup.y - 60 - ClientPrefs.data.comboOffset[1];
+
+		// Apply per-judgement offset from theme.json
+		if (ratingPopups_offsets != null) {
+			var off = Reflect.field(ratingPopups_offsets, assetName);
+			if (off != null) {
+				popup.x = popup.x + off[0];
+				popup.y = popup.y + off[1];
+			}
+		}
+	}
+
+	popup.acceleration.y = ratingPopups_accelerationY * game.playbackRate * game.playbackRate;
+	popup.acceleration.x = ratingPopups_accelerationX * game.playbackRate * game.playbackRate;
+	popup.velocity.y = ratingPopups_velocityY * game.playbackRate;
+	popup.velocity.x = ratingPopups_velocityX * game.playbackRate;
+
 	popup.cameras = [game.camHUD];
 
 	game.add(popup);

@@ -8,11 +8,11 @@
 	"accelerationX": 0,
 	"accelerationY": 550,
 	"offsets": {
-		"marvelous": [0, 0],
-		"perfect": [0, 0],
-		"great": [0, 0],
-		"good": [0, 0],
-		"okay": [0, 0],
-		"miss": [0, 0]
+		"marvelous": [16, 0],
+		"perfect": [16, 0],
+		"great": [16, 0],
+		"good": [16, 0],
+		"okay": [16, 0],
+		"miss": [16, 0]
 	}
 }

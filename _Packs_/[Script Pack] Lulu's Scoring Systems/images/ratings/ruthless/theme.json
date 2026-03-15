@@ -8,13 +8,13 @@
 	"accelerationX": 0,
 	"accelerationY": 0,
 	"offsets": {
-		"flawless": [-132, 64],
-		"precise": [-132, 64],
-		"great": [-132, 64],
-		"good": [-132, 64],
-		"ok": [-132, 64],
-		"sloppy": [-132, 64],
-		"barely": [-132, 64],
-		"miss": [-132, 64]
+		"flawless": [-132, 0],
+		"precise": [-132, 0],
+		"great": [-132, 0],
+		"good": [-132, 0],
+		"ok": [-132, 0],
+		"sloppy": [-132, 0],
+		"barely": [-132, 0],
+		"miss": [-132, 0]
 	}
 }
