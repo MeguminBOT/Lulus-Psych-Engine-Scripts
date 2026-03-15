@@ -97,7 +97,6 @@ local tier5Count = 0
 local tier6Count = 0
 local tier7Count = 0
 local missCount = 0
-local cbCount = 0
 
 -- UI elements
 local judgementBg = nil
@@ -255,7 +254,6 @@ local function getJudgmentCounts()
                 { count = tier5Count },
                 { count = tier6Count },
                 { count = tier7Count },
-                { count = cbCount },
                 { count = missCount }
             }
         elseif scoringSystem == 'IIDX' then
@@ -344,8 +342,7 @@ local function getJudgmentDefinitions()
             { name = 'tier5', label = 'Ok',       color = 'FFE066' },
             { name = 'tier6', label = 'Sloppy',   color = 'FF9A3D' },
             { name = 'tier7', label = 'Barely',   color = 'FF4DB8' },
-            { name = 'cb',    label = 'CB',        color = 'FF8800' },
-            { name = 'miss',  label = 'Miss',      color = 'FF0000' }
+            { name = 'miss',  label = 'Miss',      color = 'FF0000' }   
         }
     elseif scoringSystem == 'IIDX' then
         defs = {
@@ -453,7 +450,6 @@ local function resetJudgmentCounters()
     tier6Count = 0
     tier7Count = 0
     missCount = 0
-    cbCount = 0
     updateJudgmentTexts()
 end
 
@@ -677,7 +673,6 @@ function onUpdatePost(elapsed)
         tier5Count = getVar('ruthless_okHits') or 0
         tier6Count = getVar('ruthless_sloppyHits') or 0
         tier7Count = getVar('ruthless_barelyHits') or 0
-        cbCount = getVar('ruthless_comboBreaks') or 0
     elseif scoringSystem == 'IIDX' and iidxAvailable then
         tier1Count = getVar('iidx_pgreatHits') or 0
         tier2Count = getVar('iidx_greatHits') or 0
