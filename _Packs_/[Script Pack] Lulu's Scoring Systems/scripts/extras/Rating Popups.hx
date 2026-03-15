@@ -52,40 +52,18 @@
 			in the spritesheet, the individual flawless.png is used.
 
 		Theme Settings (theme.json):
-			Place a theme.json in: images/ratings/[system]/theme.json
-
-			Controls per-system visual settings and per-judgement offsets.
-
-			Format:
-				{
-					"antialiasing": true,
-					"scale": 1.0,
-					"offsets": {
-						"flawless": [10, -5],
-						"precise":  [0, 0],
-						"great":    [-3, 2],
-						"miss":     [0, 0]
-					}
-				}
+			theme.json in: images/ratings/[system]/theme.json
 
 			Fields:
-				antialiasing  - Default antialiasing for this system's popups.
-								Used when "Use Theme Defaults" is on, or
-								when antialiasing is set to "Theme Default".
-				scale         - Scale multiplier for this system's popups.
-								Used when "Use Theme Defaults" is on.
-								1.0 = default size, 0.5 = half, 2.0 = double.
-				framerate     - Animation framerate for spritesheet popups.
-								Default: 60. Only affects animated popups.
-				tweenDuration - Duration (seconds) of the fade-out tween.
-								Default: 0.1.
-				velocityX     - Horizontal velocity of the popup sprite.
-								Default: 0. Negative = left, positive = right.
-				velocityY     - Vertical velocity of the popup sprite.
-								Default: -75. Negative = upward, positive = downward.
-				offsets       - Per-judgement [x, y] position adjustments.
-								Applied after positioning. Works for both
-								individual images and spritesheet animations.
+				antialiasing  - Default antialiasing for this system's popups. Used when "Use Theme Defaults" is on.
+				scale         - Scale multiplier for this system's popups. Used when "Use Theme Defaults" is on.
+				framerate     - Animation framerate for spritesheet popups. Default: 60.
+				tweenDuration - Duration (seconds) of the fade-out tween. Default: 0.1.
+				velocityX     - Horizontal velocity of the popup sprite. Default: 0.
+				velocityY     - Vertical velocity of the popup sprite. Default: -75.
+				accelerationX - Horizontal acceleration of the popup sprite. Default: 0.
+				accelerationY - Vertical acceleration of the popup sprite. Default: 550. Positive = downward gravity.
+				offsets       - Per-judgement [x, y] position adjustments. Applied after initial positioning.
 
 		Place this script in 'mods/YourMod/scripts/' or 'mods/scripts/'.
 
@@ -111,6 +89,8 @@ var ratingPopups_framerate = 60;
 var ratingPopups_tweenDuration = 0.1;
 var ratingPopups_velocityX = 0;
 var ratingPopups_velocityY = -75;
+var ratingPopups_accelerationX = 0;
+var ratingPopups_accelerationY = 550;
 var ratingPopups_spritesheetFrames = null;
 var ratingPopups_offsets = null;
 var ratingPopups_graphicCache = null;
@@ -526,6 +506,10 @@ function loadSpritesheet() {
 			ratingPopups_velocityX = Reflect.field(theme, 'velocityX');
 		if (Reflect.hasField(theme, 'velocityY'))
 			ratingPopups_velocityY = Reflect.field(theme, 'velocityY');
+		if (Reflect.hasField(theme, 'accelerationX'))
+			ratingPopups_accelerationX = Reflect.field(theme, 'accelerationX');
+		if (Reflect.hasField(theme, 'accelerationY'))
+			ratingPopups_accelerationY = Reflect.field(theme, 'accelerationY');
 		debug('Theme loaded: ' + themePath);
 	}
 
@@ -654,7 +638,8 @@ function spawnPopup(judgement:String) {
 	popup.screenCenter();
 	popup.x = placement - 40;
 	popup.y = popup.y - 60;
-	popup.acceleration.y = 550 * game.playbackRate * game.playbackRate;
+	popup.acceleration.y = ratingPopups_accelerationY * game.playbackRate * game.playbackRate;
+	popup.acceleration.x = ratingPopups_accelerationX * game.playbackRate * game.playbackRate;
 	popup.velocity.y = ratingPopups_velocityY * game.playbackRate;
 	popup.velocity.x = ratingPopups_velocityX * game.playbackRate;
 	popup.x = popup.x + ClientPrefs.data.comboOffset[0];
@@ -739,7 +724,9 @@ function goodNoteHit(note:Note) {
 	}
 
 	// osu!mania: suppress head popup for hold notes (judgement shown at tail release instead)
-	if ((ratingPopups_activeSystem == 'OsuMania' || ratingPopups_activeSystem == 'OsuManiaV2') && note.tail != null && note.tail.length > 0)
+	if ((ratingPopups_activeSystem == 'OsuMania' || ratingPopups_activeSystem == 'OsuManiaV2')
+		&& note.tail != null
+		&& note.tail.length > 0)
 		return;
 
 	// Calculate timing offset (same method as scoring systems)

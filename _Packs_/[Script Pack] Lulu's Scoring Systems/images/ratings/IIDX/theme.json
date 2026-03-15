@@ -1,5 +1,12 @@
 {
 	"antialiasing": false,
+	"scale": 1.0,
+	"framerate": 60,
+	"tweenDuration": 0.1,
+	"velocityX": 0,
+	"velocityY": -75,
+	"accelerationX": 0,
+	"accelerationY": 550,
 	"offsets": {
 		"pgreat": [0, 0],
 		"great": [0, 0],
