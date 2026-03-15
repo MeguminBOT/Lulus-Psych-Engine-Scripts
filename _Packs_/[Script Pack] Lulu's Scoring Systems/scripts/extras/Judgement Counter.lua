@@ -44,6 +44,28 @@ local borderSize = 1.5     -- Text border/outline size
 local lineSpacing = 20 -- Spacing between judgment lines
 local textPadding = 10 -- Padding from background edges
 
+-- Color override
+local overrideColors = false
+local colorOverrides = {}
+
+-- FlxColor preset name -> hex mapping
+local flxColorPresets = {
+    WHITE   = 'FFFFFF',
+    GRAY    = '808080',
+    BLACK   = '000000',
+    GREEN   = '008000',
+    LIME    = '00FF00',
+    YELLOW  = 'FFFF00',
+    ORANGE  = 'FFA500',
+    RED     = 'FF0000',
+    PURPLE  = '800080',
+    BLUE    = '0000FF',
+    BROWN   = '8B4513',
+    PINK    = 'FFC0CB',
+    MAGENTA = 'FF00FF',
+    CYAN    = '00FFFF'
+}
+
 -- Scalable window settings (loaded from settings.json, used as classifyHit fallback)
 local wife3JudgeScale = 1.0
 local itgWindowScale = 1.0
@@ -268,15 +290,17 @@ end
 
 -- Get judgment definitions (labels + colors) based on active scoring system
 local function getJudgmentDefinitions()
+    local defs
+
     if scoringSystem == 'O2Jam' then
-        return {
+        defs = {
             { name = 'tier1', label = 'Cool', color = 'FFFF00' },
             { name = 'tier2', label = 'Good', color = '00FFFF' },
             { name = 'tier3', label = 'Bad',  color = 'FF00FF' },
             { name = 'miss',  label = 'Miss', color = 'FF8000' }
         }
     elseif scoringSystem == 'OsuMania' then
-        return {
+        defs = {
             { name = 'tier1', label = 'MAX',  color = '00FFFF' },
             { name = 'tier2', label = '300',  color = 'FFFF00' },
             { name = 'tier3', label = '200',  color = '00FF00' },
@@ -285,7 +309,7 @@ local function getJudgmentDefinitions()
             { name = 'miss',  label = 'Miss', color = 'FF0000' }
         }
     elseif scoringSystem == 'OsuManiaV2' then
-        return {
+        defs = {
             { name = 'tier1', label = 'MAX',  color = '00FFFF' },
             { name = 'tier2', label = '300',  color = 'FFFF00' },
             { name = 'tier3', label = '200',  color = '00FF00' },
@@ -294,7 +318,7 @@ local function getJudgmentDefinitions()
             { name = 'miss',  label = 'Miss', color = 'FF0000' }
         }
     elseif scoringSystem == 'ITG' then
-        return {
+        defs = {
             { name = 'tier1', label = 'Fantastic', color = '00FFFF' },
             { name = 'tier2', label = 'Excellent', color = 'FFFF00' },
             { name = 'tier3', label = 'Great',     color = '00FF00' },
@@ -303,7 +327,7 @@ local function getJudgmentDefinitions()
             { name = 'miss',  label = 'Miss',      color = 'FF0000' }
         }
     elseif scoringSystem == 'Wife3' then
-        return {
+        defs = {
             { name = 'tier1', label = 'Marvelous', color = 'FFFFFF' },
             { name = 'tier2', label = 'Perfect',   color = 'FFFF00' },
             { name = 'tier3', label = 'Great',     color = '00FF00' },
@@ -312,7 +336,7 @@ local function getJudgmentDefinitions()
             { name = 'miss',  label = 'Miss',      color = 'FF0000' }
         }
     elseif scoringSystem == 'Ruthless' then
-        return {
+        defs = {
             { name = 'tier1', label = 'Flawless', color = 'E6FFFF' },
             { name = 'tier2', label = 'Precise',  color = '7DF9FF' },
             { name = 'tier3', label = 'Great',    color = '4CFF6A' },
@@ -320,10 +344,11 @@ local function getJudgmentDefinitions()
             { name = 'tier5', label = 'Ok',       color = 'FFE066' },
             { name = 'tier6', label = 'Sloppy',   color = 'FF9A3D' },
             { name = 'tier7', label = 'Barely',   color = 'FF4DB8' },
-            { name = 'miss',  label = 'Miss',     color = 'FF0000' }
+            { name = 'cb',    label = 'CB',        color = 'FF8800' },
+            { name = 'miss',  label = 'Miss',      color = 'FF0000' }
         }
     elseif scoringSystem == 'IIDX' then
-        return {
+        defs = {
             { name = 'tier1', label = 'PGreat', color = '00FFFF' },
             { name = 'tier2', label = 'Great',  color = 'FFD700' },
             { name = 'tier3', label = 'Good',   color = '00FF00' },
@@ -332,7 +357,7 @@ local function getJudgmentDefinitions()
             { name = 'miss',  label = 'Miss',   color = 'FF0000' }
         }
     elseif scoringSystem == 'DJMAX' then
-        return {
+        defs = {
             { name = 'tier1', label = 'MAX 100%', color = '00FFFF' },
             { name = 'tier2', label = 'MAX 90%',  color = 'FFFF00' },
             { name = 'tier3', label = 'Good',     color = '00FF00' },
@@ -340,7 +365,7 @@ local function getJudgmentDefinitions()
             { name = 'miss',  label = 'Miss',     color = 'FF0000' }
         }
     elseif scoringSystem == 'Quaver' then
-        return {
+        defs = {
             { name = 'tier1', label = 'Marvelous', color = 'FFFFFF' },
             { name = 'tier2', label = 'Perfect',   color = 'FFE76B' },
             { name = 'tier3', label = 'Great',     color = '5FFF7B' },
@@ -350,7 +375,7 @@ local function getJudgmentDefinitions()
         }
     else
         -- Psych Engine default (4 hit windows)
-        return {
+        defs = {
             { name = 'tier1', label = 'Sick', color = '00FFFF' },
             { name = 'tier2', label = 'Good', color = '00FF00' },
             { name = 'tier3', label = 'Bad',  color = 'FF8800' },
@@ -358,6 +383,17 @@ local function getJudgmentDefinitions()
             { name = 'miss',  label = 'Miss', color = 'FF0000' }
         }
     end
+
+    -- Apply color overrides if enabled
+    if overrideColors then
+        for i, def in ipairs(defs) do
+            if colorOverrides[i] ~= nil then
+                def.color = colorOverrides[i]
+            end
+        end
+    end
+
+    return defs
 end
 
 -- Update all judgment text displays
@@ -540,6 +576,31 @@ function onCreate()
     if setting ~= nil then
         counterEnabled = setting
     end
+
+    -- Read position from settings
+    local posX = getModSetting('scoring_judgementCounterX')
+    if posX ~= nil then counterX = posX end
+    local posY = getModSetting('scoring_judgementCounterY')
+    if posY ~= nil then counterY = posY end
+
+    -- Read color override settings
+    local overrideSetting = getModSetting('scoring_jcOverrideColors')
+    if overrideSetting ~= nil then overrideColors = overrideSetting end
+
+    if overrideColors then
+        local tierKeys = {
+            'scoring_jcColorTier1', 'scoring_jcColorTier2', 'scoring_jcColorTier3',
+            'scoring_jcColorTier4', 'scoring_jcColorTier5', 'scoring_jcColorTier6',
+            'scoring_jcColorTier7', 'scoring_jcColorMiss'
+        }
+        for i, key in ipairs(tierKeys) do
+            local preset = getModSetting(key)
+            if preset ~= nil and flxColorPresets[preset] ~= nil then
+                colorOverrides[i] = flxColorPresets[preset]
+            end
+        end
+    end
+
     -- Load scalable window settings (for classifyHit fallback)
     local JUDGE_WINDOWS = { 4.0, 3.0, 2.0, 1.0, 0.9, 0.75, 0.6, 0.5, 0.4 }
     local judgePreset = getModSetting('wife3_judgePreset')

@@ -68,7 +68,7 @@
 		"save": "scoring_useThemeDefaults",
 		"name": "Use Theme Defaults",
 		"type": "bool",
-		"description": "Use theme.json values for rating popup scale and antialiasing\ninstead of the settings above.\n\nWhen enabled, scale and antialiasing are read from:\nimages/ratings/[system]/theme.json",
+		"description": "Use theme.json values for rating popup scale and antialiasing\ninstead of the settings below.\n\nWhen enabled, scale and antialiasing are read from:\nimages/ratings/[system]/theme.json",
 		"value": false
 	},
 	{
@@ -131,6 +131,103 @@
 		"max": 500.0,
 		"step": 5.0,
 		"decimals": 1
+	},
+	{
+		"save": "jc_header",
+		"name": "-JUDGEMENT COUNTER SETTINGS-",
+		"type": "string",
+		"description": "Position and color settings for the judgement counter",
+		"value": " ",
+		"options": [" ", " ", " ", " "]
+	},
+	{
+		"save": "scoring_judgementCounterX",
+		"name": "Counter X Position:",
+		"type": "int",
+		"description": "Horizontal position of the judgement counter on screen",
+		"value": 50,
+		"min": 0,
+		"max": 1280
+	},
+	{
+		"save": "scoring_judgementCounterY",
+		"name": "Counter Y Position:",
+		"type": "int",
+		"description": "Vertical position of the judgement counter on screen",
+		"value": 250,
+		"min": 0,
+		"max": 720
+	},
+	{
+		"save": "scoring_jcOverrideColors",
+		"name": "Override Tier Colors",
+		"type": "bool",
+		"description": "Override the default tier colors with custom FlxColor presets.\nWhen disabled, uses the scoring system's default colors.",
+		"value": false
+	},
+	{
+		"save": "scoring_jcColorTier1",
+		"name": "Tier 1 Color:",
+		"type": "string",
+		"description": "Color for the highest tier judgment (e.g. Sick, Marvelous, MAX, Flawless)",
+		"value": "CYAN",
+		"options": ["WHITE", "GRAY", "BLACK", "GREEN", "LIME", "YELLOW", "ORANGE", "RED", "PURPLE", "BLUE", "BROWN", "PINK", "MAGENTA", "CYAN"]
+	},
+	{
+		"save": "scoring_jcColorTier2",
+		"name": "Tier 2 Color:",
+		"type": "string",
+		"description": "Color for the second tier judgment (e.g. Good, Perfect, 300, Precise)",
+		"value": "YELLOW",
+		"options": ["WHITE", "GRAY", "BLACK", "GREEN", "LIME", "YELLOW", "ORANGE", "RED", "PURPLE", "BLUE", "BROWN", "PINK", "MAGENTA", "CYAN"]
+	},
+	{
+		"save": "scoring_jcColorTier3",
+		"name": "Tier 3 Color:",
+		"type": "string",
+		"description": "Color for the third tier judgment (e.g. Bad, Great, 200)",
+		"value": "LIME",
+		"options": ["WHITE", "GRAY", "BLACK", "GREEN", "LIME", "YELLOW", "ORANGE", "RED", "PURPLE", "BLUE", "BROWN", "PINK", "MAGENTA", "CYAN"]
+	},
+	{
+		"save": "scoring_jcColorTier4",
+		"name": "Tier 4 Color:",
+		"type": "string",
+		"description": "Color for the fourth tier judgment (e.g. Shit, Good, 100)",
+		"value": "BLUE",
+		"options": ["WHITE", "GRAY", "BLACK", "GREEN", "LIME", "YELLOW", "ORANGE", "RED", "PURPLE", "BLUE", "BROWN", "PINK", "MAGENTA", "CYAN"]
+	},
+	{
+		"save": "scoring_jcColorTier5",
+		"name": "Tier 5 Color:",
+		"type": "string",
+		"description": "Color for the fifth tier judgment (e.g. 50, Way Off, Ok)\nOnly used by systems with 5+ hit tiers",
+		"value": "GRAY",
+		"options": ["WHITE", "GRAY", "BLACK", "GREEN", "LIME", "YELLOW", "ORANGE", "RED", "PURPLE", "BLUE", "BROWN", "PINK", "MAGENTA", "CYAN"]
+	},
+	{
+		"save": "scoring_jcColorTier6",
+		"name": "Tier 6 Color:",
+		"type": "string",
+		"description": "Color for the sixth tier judgment (e.g. Sloppy)\nOnly used by Ruthless",
+		"value": "ORANGE",
+		"options": ["WHITE", "GRAY", "BLACK", "GREEN", "LIME", "YELLOW", "ORANGE", "RED", "PURPLE", "BLUE", "BROWN", "PINK", "MAGENTA", "CYAN"]
+	},
+	{
+		"save": "scoring_jcColorTier7",
+		"name": "Tier 7 Color:",
+		"type": "string",
+		"description": "Color for the seventh tier judgment (e.g. Barely)\nOnly used by Ruthless",
+		"value": "MAGENTA",
+		"options": ["WHITE", "GRAY", "BLACK", "GREEN", "LIME", "YELLOW", "ORANGE", "RED", "PURPLE", "BLUE", "BROWN", "PINK", "MAGENTA", "CYAN"]
+	},
+	{
+		"save": "scoring_jcColorMiss",
+		"name": "Miss Color:",
+		"type": "string",
+		"description": "Color for the Miss judgment",
+		"value": "RED",
+		"options": ["WHITE", "GRAY", "BLACK", "GREEN", "LIME", "YELLOW", "ORANGE", "RED", "PURPLE", "BLUE", "BROWN", "PINK", "MAGENTA", "CYAN"]
 	},
 	{
 		"save": "wife3_header",
