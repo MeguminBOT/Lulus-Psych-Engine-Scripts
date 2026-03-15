@@ -59,6 +59,7 @@ var osuv2_300Hits = 0;
 var osuv2_200Hits = 0;
 var osuv2_100Hits = 0;
 var osuv2_50Hits = 0;
+var osuv2_comboBreaks = 0; // Combo breaks from dropped sustains (tail misses)
 
 // --- Sustain Tail Tracking (Do Not Modify) ---
 var osuv2_tailLenience = 1.5;
@@ -356,6 +357,8 @@ function processTailMiss() {
 	osuv2_combo = 0;
 	osuv2_accuracyDen = osuv2_accuracyDen + 300.0;
 	osuv2_objectsProcessed = osuv2_objectsProcessed + 1;
+	osuv2_comboBreaks = osuv2_comboBreaks + 1;
+	setVar('osuv2_comboBreaks', osuv2_comboBreaks);
 
 	// Trigger release miss popup (if extras scripts are loaded)
 	var releasePopupFn = getVar('ratingPopups_spawnPopup');
@@ -468,9 +471,10 @@ function osuv2_getGrade(percent:Float):String {
  */
 function osuv2_getRatingFC():String {
 	var misses = game.songMisses;
+	var totalBreaks = misses + osuv2_comboBreaks;
 
-	if (misses > 0) {
-		if (misses < 10)
+	if (totalBreaks > 0) {
+		if (totalBreaks < 10)
 			return 'SDCB';
 		return 'Clear';
 	}
@@ -520,6 +524,7 @@ function osuv2_resetScoring() {
 	osuv2_200Hits = 0;
 	osuv2_100Hits = 0;
 	osuv2_50Hits = 0;
+	osuv2_comboBreaks = 0;
 	osuv2_objectsCounted = false;
 	osuv2_activeSustains = [null, null, null, null];
 	debug('osu!mania V2 scoring reset');
@@ -566,6 +571,7 @@ function osuv2_updateScoreText() {
 
 	var score = osuv2_getScore();
 	var misses = game.songMisses;
+	var cbs = osuv2_comboBreaks;
 	var hasHitNotes = (osuv2_accuracyDen > 0);
 
 	var scoreText = '';
@@ -576,9 +582,11 @@ function osuv2_updateScoreText() {
 		var grade = osuv2_getGrade(accuracy);
 		var ratingFC = osuv2_getRatingFC();
 
-		scoreText = osuv2_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC
+		scoreText = osuv2_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + cbs + ' | Misses: ' + misses + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC
 			+ ') ' + grade : 'Score: '
 			+ score
+			+ ' | Combo Breaks: '
+			+ cbs
 			+ ' | Misses: '
 			+ misses
 			+ ' | Rating: '
@@ -588,8 +596,10 @@ function osuv2_updateScoreText() {
 			+ '%) - '
 			+ ratingFC;
 	} else {
-		scoreText = osuv2_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ?' : 'Score: '
+		scoreText = osuv2_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + cbs + ' | Misses: ' + misses + ' | Accuracy: ?' : 'Score: '
 			+ score
+			+ ' | Combo Breaks: '
+			+ cbs
 			+ ' | Misses: '
 			+ misses
 			+ ' | Rating: ?';
@@ -769,22 +779,24 @@ function onKeyRelease(key:Int) {
 	var releaseOffset = active.lastTailStrumTime - Conductor.songPosition;
 	releaseOffset = releaseOffset / playbackRate;
 
-	active.tailProcessed = true;
-	ensureObjectsCounted();
-
 	// Check if release is beyond the tail miss window
 	var absOffset = Math.abs(releaseOffset);
 	var missWindow = osuv2_getTailHitWindow('miss');
 
 	if (absOffset > missWindow) {
-		// Released way too early - full tail miss
-		processTailMiss();
-		debug('Tail miss (released too early: ' + Math.round(releaseOffset * 100) / 100 + 'ms) on column ' + key);
-	} else {
-		// Judge the release timing
-		processTailHit(releaseOffset, active.holdBroken);
-		debug('Tail release on column ' + key + ' at offset ' + Math.round(releaseOffset * 100) / 100 + 'ms');
+		// Released too early - mark hold as broken but don't finalize
+		// Engine will fire noteMiss for remaining pieces, breaking combo naturally
+		// Player can re-press to continue the sustain
+		active.holdBroken = true;
+		debug('Hold broken (released early: ' + Math.round(releaseOffset * 100) / 100 + 'ms) on column ' + key);
+		return;
 	}
+
+	// Released near the tail end - score the release timing
+	active.tailProcessed = true;
+	ensureObjectsCounted();
+	processTailHit(releaseOffset, active.holdBroken);
+	debug('Tail release on column ' + key + ' at offset ' + Math.round(releaseOffset * 100) / 100 + 'ms');
 
 	// Mark remaining sustain tail pieces as handled to prevent double-processing
 	if (active.parentNote != null && active.parentNote.tail != null) {
@@ -810,6 +822,9 @@ function noteMiss(note:Note) {
 
 	// Handle sustain note misses
 	if (note.isSustainNote) {
+		// Undo engine's songMisses++ for sustain pieces (combo break, not a miss)
+		game.songMisses = game.songMisses - 1;
+
 		if (note.parent == null)
 			return;
 
@@ -824,8 +839,10 @@ function noteMiss(note:Note) {
 		// Track hold break if an intermediate piece was missed while sustain is active
 		if (!isLastTail) {
 			var active = osuv2_activeSustains[note.noteData];
-			if (active != null && !active.tailProcessed)
+			if (active != null && !active.tailProcessed) {
 				active.holdBroken = true;
+				osuv2_combo = 0;
+			}
 			return;
 		}
 

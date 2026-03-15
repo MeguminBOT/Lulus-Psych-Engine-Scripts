@@ -793,6 +793,7 @@ function goodNoteHit(note:Note) {
 	if (offsetMs > 50.0) {
 		game.combo = 0;
 		ruthless_comboBreaks = ruthless_comboBreaks + 1;
+		setVar('ruthless_comboBreaks', ruthless_comboBreaks);
 	}
 
 	debug('Hit at ' + ruthless_formatPercent(offsetMs) + 'ms -> ' + judgement + ' (' + ruthless_formatPercent(accuracy * 100) + '%) | Score: '
