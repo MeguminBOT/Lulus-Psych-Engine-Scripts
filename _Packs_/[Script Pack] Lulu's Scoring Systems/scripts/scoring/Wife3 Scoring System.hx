@@ -10,7 +10,7 @@
 			- Judge 1-9 presets for customizable difficulty.
 			- Customizable judge scale instead of being limited to presets only.
 			- *Optional* Kade Engine style score text formatting.
-			- Settings.json support (when using "Lulu's Feature Pack")
+			- Settings.json support (when using "Lulu's Scoring Systems" pack)
 				- Configure settings through the mod settings menu
 				- Settings from settings.json will override the default values in the script
 
@@ -114,7 +114,7 @@ function loadSettings() {
 // ========================================
 
 /**
- * Helper function to print debug messages only when wife3debug is true
+ * Helper function to print debug messages only when wife3_debug is true
  * @param message Message to print
  * @param color Optional color for the debug text (FlxColor)
  */
@@ -204,6 +204,17 @@ function calculateSongScore(accuracy:Float):Int {
 // ========================================
 // HELPER FUNCTIONS
 // ========================================
+
+/**
+ * Overrides Conductor.safeZoneOffset to match Wife3's bad window.
+ * Uses (180 * judge_scale) * playbackRate.
+ */
+function wife3_applySafeZone() {
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	var outerWindow = 180.0 * wife3_judge_scale;
+	Conductor.safeZoneOffset = outerWindow * playbackRate;
+	debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (badWindow=' + outerWindow + 'ms)');
+}
 
 /**
  * Enables or disables the Wife3 scoring system
@@ -497,6 +508,47 @@ function wife3_getKadeEngineStyle():Bool {
 	return wife3_kadeEngineStyle;
 }
 
+function processMiss() {
+	wife3_curAccuracy = wife3_curAccuracy + wife3_miss_weight;
+	wife3_maxAccuracy = wife3_maxAccuracy + wife3_max_points;
+	wife3_songScore = wife3_songScore + calculateSongScore(wife3_miss_weight);
+}
+
+function processNote(note:Note) {
+	var noteDiff = note.strumTime - Conductor.songPosition;
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	var offsetMs = Math.abs(noteDiff / playbackRate);
+	var offsetSec = noteDiff / playbackRate / 1000.0;
+
+	var accuracy = wife3(offsetSec, wife3_judge_scale);
+
+	if (offsetMs <= 22.0 * wife3_judge_scale) {
+		wife3_marvelousHits = wife3_marvelousHits + 1;
+		setVar('wife3_marvelousHits', wife3_marvelousHits);
+	} else if (offsetMs <= 45.0 * wife3_judge_scale) {
+		wife3_perfectHits = wife3_perfectHits + 1;
+		setVar('wife3_perfectHits', wife3_perfectHits);
+	} else if (offsetMs <= 90.0 * wife3_judge_scale) {
+		wife3_greatHits = wife3_greatHits + 1;
+		setVar('wife3_greatHits', wife3_greatHits);
+	} else if (offsetMs <= 135.0 * wife3_judge_scale) {
+		wife3_goodHits = wife3_goodHits + 1;
+		setVar('wife3_goodHits', wife3_goodHits);
+	} else {
+		wife3_badHits = wife3_badHits + 1;
+		setVar('wife3_badHits', wife3_badHits);
+	}
+
+	wife3_curAccuracy = wife3_curAccuracy + accuracy;
+	wife3_maxAccuracy = wife3_maxAccuracy + wife3_max_points;
+	wife3_songScore = wife3_songScore + calculateSongScore(accuracy);
+
+	debug('Hit: ' + Math.round(offsetMs * 100) / 100 + 'ms | Wife3: ' + Math.round(accuracy * 1000) / 1000 + ' | Score: ' + wife3_songScore);
+
+	if (wife3_replaceScoreText)
+		wife3_updateScoreText();
+}
+
 /**
  * Updates the score text with Wife3 information
  * This function replaces the default scoreText content.
@@ -508,36 +560,25 @@ function wife3_updateScoreText() {
 
 	var score = wife3_getScore();
 	var misses = game.songMisses;
-	var hasHitNotes = (wife3_maxAccuracy > 0);
+	var prefix = wife3_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses : 'Score: ' + score + ' | Misses: ' + misses;
 
-	var scoreText = '';
-
-	if (hasHitNotes) {
-		var accuracy = wife3_getAccuracy();
-		var formattedPercent = wife3_formatPercent(accuracy);
-		var grade = wife3_getGrade(accuracy);
-		var ratingFC = wife3_getRatingFC();
-
-		scoreText = wife3_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC
-			+ ') ' + grade : 'Score: '
-			+ score
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: '
-			+ grade
-			+ ' ('
-			+ formattedPercent
-			+ '%) - '
-			+ ratingFC;
-	} else {
-		scoreText = wife3_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ?' : 'Score: '
-			+ score
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: ?';
+	if (wife3_maxAccuracy <= 0) {
+		game.scoreTxt.text = prefix + (wife3_kadeEngineStyle ? ' | Accuracy: ?' : ' | Rating: ?');
+		return;
 	}
 
-	game.scoreTxt.text = scoreText;
+	var accuracy = wife3_getAccuracy();
+	var formattedPercent = wife3_formatPercent(accuracy);
+	var grade = wife3_getGrade(accuracy);
+	var ratingFC = wife3_getRatingFC();
+
+	game.scoreTxt.text = wife3_kadeEngineStyle ? prefix + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC + ') ' + grade : prefix
+		+ ' | Rating: '
+		+ grade
+		+ ' ('
+		+ formattedPercent
+		+ '%) - '
+		+ ratingFC;
 }
 
 // ========================================
@@ -545,7 +586,7 @@ function wife3_updateScoreText() {
 // ========================================
 
 /**
- * Registers all note caching functions as global callbacks.
+ * Registers all Wife3 scoring functions as global callbacks.
  * Makes these functions accessible from other scripts via setVar() and createGlobalCallback().
  */
 function registerCallbacks() {
@@ -585,7 +626,6 @@ function registerCallbacks() {
 // ========================================
 
 function onCreate() {
-	// Load settings from settings.json if available
 	loadSettings();
 	registerCallbacks();
 
@@ -596,16 +636,11 @@ function onCreate() {
 function onCreatePost() {
 	wife3_resetAccuracy();
 
-	if (wife3_isActiveSystem) {
-		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-		var outerWindow = 180.0 * wife3_judge_scale;
-		Conductor.safeZoneOffset = outerWindow * playbackRate;
-		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (badWindow=' + outerWindow + 'ms)');
-	}
+	if (wife3_isActiveSystem)
+		wife3_applySafeZone();
 }
 
 function preUpdateScore(miss:Bool) {
-	// Only prevent default score text update if Wife3 is the active system with score text replacement enabled
 	if (wife3_isActiveSystem && wife3_replaceScoreText) {
 		if (!miss) {
 			game.doScoreBop();
@@ -622,59 +657,17 @@ function onUpdateScore(miss:Bool) {
 }
 
 function goodNoteHit(note:Note) {
-	if (note.isSustainNote || !note.mustPress)
-		return;
-	if (!wife3_enabled)
+	if (note.isSustainNote || !note.mustPress || !wife3_enabled)
 		return;
 
-	// Calculate timing offset
-	var noteDiff = note.strumTime - Conductor.songPosition;
-	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-	noteDiff = noteDiff / playbackRate;
-	var offsetSeconds = noteDiff / 1000.0;
-	var offsetMs = Math.abs(noteDiff);
-
-	// Calculate Wife3 accuracy
-	var accuracy = wife3(offsetSeconds, wife3_judge_scale);
-
-	// Track judgements based on timing windows (scaled by judge scale)
-	if (offsetMs <= wife3_getTimingWindow('marvelous')) {
-		wife3_marvelousHits = wife3_marvelousHits + 1;
-		setVar('wife3_marvelousHits', wife3_marvelousHits);
-	} else if (offsetMs <= wife3_getTimingWindow('perfect')) {
-		wife3_perfectHits = wife3_perfectHits + 1;
-		setVar('wife3_perfectHits', wife3_perfectHits);
-	} else if (offsetMs <= wife3_getTimingWindow('great')) {
-		wife3_greatHits = wife3_greatHits + 1;
-		setVar('wife3_greatHits', wife3_greatHits);
-	} else if (offsetMs <= wife3_getTimingWindow('good')) {
-		wife3_goodHits = wife3_goodHits + 1;
-		setVar('wife3_goodHits', wife3_goodHits);
-	} else {
-		// Any hit worse than good window counts as bad (including hits outside 180ms)
-		wife3_badHits = wife3_badHits + 1;
-		setVar('wife3_badHits', wife3_badHits);
-	}
-
-	// Update tracking
-	wife3_curAccuracy += accuracy;
-	wife3_maxAccuracy += wife3_max_points;
-	wife3_songScore += calculateSongScore(accuracy);
-
-	if (wife3_replaceScoreText) {
-		wife3_updateScoreText();
-	}
+	processNote(note);
 }
 
 function noteMiss(note:Note) {
-	if (note.isSustainNote || !note.mustPress)
-		return;
-	if (!wife3_enabled)
+	if (note.isSustainNote || !note.mustPress || !wife3_enabled)
 		return;
 
-	wife3_curAccuracy += wife3_miss_weight;
-	wife3_maxAccuracy += wife3_max_points;
-	wife3_songScore += calculateSongScore(wife3_miss_weight);
+	processMiss();
 
 	debug('Note missed - Wife Penalty: ' + wife3_miss_weight + ', Total: ' + wife3_curAccuracy + '/' + wife3_maxAccuracy);
 
@@ -683,6 +676,4 @@ function noteMiss(note:Note) {
 	}
 }
 
-function onDestroy() {
-	// Cleanup handled by Timing Display script
-}
+function onDestroy() {}

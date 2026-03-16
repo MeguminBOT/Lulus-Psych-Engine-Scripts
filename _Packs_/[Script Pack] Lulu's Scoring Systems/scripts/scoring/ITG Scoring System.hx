@@ -13,7 +13,7 @@
 			- Hold note judgements (OK/NG) with dance point and score integration.
 			- Window Scale support for customizable timing difficulty.
 			- Playback rate support.
-			- Settings.json support (when using "Lulu's Feature Pack")
+			- Settings.json support (when using "Lulu's Scoring Systems" pack)
 				- Configure settings through the mod settings menu
 				- Settings from settings.json will override the default values in the script
 
@@ -357,29 +357,20 @@ function processHoldNG() {
 	debug('Hold NG | Score: ' + itg_currentScore + ' | DP: ' + Math.round(itg_earnedDP) + '/' + Math.round(itg_maxDP));
 }
 
-/**
- * Processes a tap miss. Weight=0 for DDR MAX2, -12 dance points (ITG theme).
- * The step counter still increments to maintain proper score scaling.
- */
-function processMiss() {
-	// DDR MAX2: Miss weight=0, step counter still increments
-	itg_stepCount = itg_stepCount + 1;
-	// earnedPoints += 0 * stepCount (no score added)
-
-	var maxPossible = getMaxPossiblePoints();
-	if (maxPossible > 0)
-		itg_currentScore = Math.round(itg_earnedPoints / maxPossible * itg_maxDisplayScore);
-
-	// Dance points: Miss = -12 (ITG theme)
-	itg_earnedDP = itg_earnedDP - 12.0;
-	itg_maxDP = itg_maxDP + 5.0;
-
-	debug('Miss! | Score: ' + itg_currentScore + ' | DP: ' + Math.round(itg_earnedDP) + '/' + Math.round(itg_maxDP));
-}
-
 // ========================================
 // HELPER FUNCTIONS
 // ========================================
+
+/**
+ * Overrides Conductor.safeZoneOffset to match ITG's Way Off window.
+ * Uses (180 * windowScale) * playbackRate.
+ */
+function itg_applySafeZone() {
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	var outerWindow = 180.0 * itg_windowScale;
+	Conductor.safeZoneOffset = outerWindow * playbackRate;
+	debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (wayoffWindow=' + outerWindow + 'ms)');
+}
 
 /**
  * Enables or disables the ITG scoring system
@@ -673,6 +664,88 @@ function itg_getKadeEngineStyle():Bool {
 	return itg_kadeEngineStyle;
 }
 
+function processMiss() {
+	// DDR MAX2: Miss weight=0, step counter still increments
+	itg_stepCount = itg_stepCount + 1;
+
+	var maxPossible = getMaxPossiblePoints();
+	if (maxPossible > 0)
+		itg_currentScore = Math.round(itg_earnedPoints / maxPossible * itg_maxDisplayScore);
+
+	// Dance points: Miss = -12 (ITG theme)
+	itg_earnedDP = itg_earnedDP - 12.0;
+	itg_maxDP = itg_maxDP + 5.0;
+}
+
+function processNote(note:Note) {
+	// Handle sustain notes - only process the LAST tail piece as Hold OK
+	if (note.isSustainNote) {
+		if (note.parent == null)
+			return;
+
+		var isLastTail = false;
+		var parentTail = note.parent.tail;
+		if (parentTail != null && parentTail.length > 0) {
+			var lastNote = parentTail[parentTail.length - 1];
+			if (lastNote == note)
+				isLastTail = true;
+		}
+
+		if (!isLastTail)
+			return;
+
+		ensureNotesCounted();
+		processHoldOK();
+
+		if (itg_replaceScoreText)
+			itg_updateScoreText();
+		return;
+	}
+
+	ensureNotesCounted();
+
+	var noteDiff = note.strumTime - Conductor.songPosition;
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	processHit(noteDiff / playbackRate);
+
+	if (itg_replaceScoreText)
+		itg_updateScoreText();
+}
+
+function processNoteMiss(note:Note) {
+	// Handle sustain note misses - only process last tail as Hold NG
+	if (note.isSustainNote) {
+		if (note.parent == null)
+			return;
+
+		var isLastTail = false;
+		var parentTail = note.parent.tail;
+		if (parentTail != null && parentTail.length > 0) {
+			var lastNote = parentTail[parentTail.length - 1];
+			if (lastNote == note)
+				isLastTail = true;
+		}
+
+		if (!isLastTail)
+			return;
+
+		ensureNotesCounted();
+		processHoldNG();
+
+		if (itg_replaceScoreText)
+			itg_updateScoreText();
+		return;
+	}
+
+	ensureNotesCounted();
+	processMiss();
+
+	debug('Miss! | Score: ' + itg_currentScore + ' | DP: ' + Math.round(itg_earnedDP) + '/' + Math.round(itg_maxDP));
+
+	if (itg_replaceScoreText)
+		itg_updateScoreText();
+}
+
 // ========================================
 // SCORE TEXT
 // ========================================
@@ -687,36 +760,25 @@ function itg_updateScoreText() {
 
 	var score = itg_getScore();
 	var misses = game.songMisses;
-	var hasHitNotes = (itg_maxDP > 0);
+	var prefix = itg_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses : 'Score: ' + score + ' | Misses: ' + misses;
 
-	var scoreText = '';
-
-	if (hasHitNotes) {
-		var accuracy = itg_getAccuracy();
-		var formattedPercent = itg_formatPercent(accuracy);
-		var grade = itg_getGrade(accuracy);
-		var ratingFC = itg_getRatingFC();
-
-		scoreText = itg_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC + ') '
-			+ grade : 'Score: '
-			+ score
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: '
-			+ grade
-			+ ' ('
-			+ formattedPercent
-			+ '%) - '
-			+ ratingFC;
-	} else {
-		scoreText = itg_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ?' : 'Score: '
-			+ score
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: ?';
+	if (itg_maxDP <= 0) {
+		game.scoreTxt.text = prefix + (itg_kadeEngineStyle ? ' | Accuracy: ?' : ' | Rating: ?');
+		return;
 	}
 
-	game.scoreTxt.text = scoreText;
+	var accuracy = itg_getAccuracy();
+	var formattedPercent = itg_formatPercent(accuracy);
+	var grade = itg_getGrade(accuracy);
+	var ratingFC = itg_getRatingFC();
+
+	game.scoreTxt.text = itg_kadeEngineStyle ? prefix + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC + ') ' + grade : prefix
+		+ ' | Rating: '
+		+ grade
+		+ ' ('
+		+ formattedPercent
+		+ '%) - '
+		+ ratingFC;
 }
 
 // ========================================
@@ -784,12 +846,8 @@ function onCreatePost() {
 
 	debug('Total scoring events: ' + itg_totalNotes + ' | Max score: ' + itg_maxDisplayScore);
 
-	if (itg_isActiveSystem) {
-		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-		var outerWindow = 180.0 * itg_windowScale;
-		Conductor.safeZoneOffset = outerWindow * playbackRate;
-		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (wayoffWindow=' + outerWindow + 'ms)');
-	}
+	if (itg_isActiveSystem)
+		itg_applySafeZone();
 }
 
 function preUpdateScore(miss:Bool) {
@@ -807,96 +865,15 @@ function onUpdateScore(miss:Bool) {
 }
 
 function goodNoteHit(note:Note) {
-	if (!note.mustPress)
-		return;
-	if (!itg_enabled)
+	if (!note.mustPress || !itg_enabled)
 		return;
 
-	// Handle sustain notes - only process the LAST tail piece as Hold OK
-	if (note.isSustainNote) {
-		if (note.parent == null)
-			return;
-
-		// Check if this is the last tail piece of the sustain
-		var isLastTail = false;
-		var parentTail = note.parent.tail;
-		if (parentTail != null && parentTail.length > 0) {
-			var lastNote = parentTail[parentTail.length - 1];
-			if (lastNote == note)
-				isLastTail = true;
-		}
-
-		if (!isLastTail)
-			return;
-
-		// Ensure accurate note count
-		ensureNotesCounted();
-
-		// Process as Hold OK (successfully held)
-		processHoldOK();
-
-		if (itg_replaceScoreText)
-			itg_updateScoreText();
-		return;
-	}
-
-	// Regular (non-sustain) note hit
-	// Ensure accurate note count (catches double chart modifications)
-	ensureNotesCounted();
-
-	// Calculate timing offset
-	var noteDiff = note.strumTime - Conductor.songPosition;
-	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-	noteDiff = noteDiff / playbackRate;
-
-	// Process the hit using absolute offset
-	processHit(noteDiff);
-
-	if (itg_replaceScoreText)
-		itg_updateScoreText();
+	processNote(note);
 }
 
 function noteMiss(note:Note) {
-	if (!note.mustPress)
-		return;
-	if (!itg_enabled)
+	if (!note.mustPress || !itg_enabled)
 		return;
 
-	// Handle sustain note misses - only process last tail as Hold NG
-	if (note.isSustainNote) {
-		if (note.parent == null)
-			return;
-
-		// Check if this is the last tail piece of the sustain
-		var isLastTail = false;
-		var parentTail = note.parent.tail;
-		if (parentTail != null && parentTail.length > 0) {
-			var lastNote = parentTail[parentTail.length - 1];
-			if (lastNote == note)
-				isLastTail = true;
-		}
-
-		if (!isLastTail)
-			return;
-
-		// Ensure accurate note count
-		ensureNotesCounted();
-
-		// Process as Hold NG (dropped hold)
-		processHoldNG();
-
-		if (itg_replaceScoreText)
-			itg_updateScoreText();
-		return;
-	}
-
-	// Regular (non-sustain) note miss
-	// Ensure accurate note count
-	ensureNotesCounted();
-
-	// Process the miss
-	processMiss();
-
-	if (itg_replaceScoreText)
-		itg_updateScoreText();
+	processNoteMiss(note);
 }

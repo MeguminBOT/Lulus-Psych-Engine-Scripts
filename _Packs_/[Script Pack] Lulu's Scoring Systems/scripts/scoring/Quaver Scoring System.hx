@@ -294,11 +294,9 @@ function processHit(offsetMs:Float) {
 		setVar('quaver_okayHits', quaver_okayHits);
 	}
 
-	// Track max combo
 	if (quaver_combo > quaver_maxCombo)
 		quaver_maxCombo = quaver_combo;
 
-	// Update accuracy tracking
 	quaver_weightedSum = quaver_weightedSum + weight;
 	quaver_totalNotes = quaver_totalNotes + 1;
 
@@ -312,20 +310,22 @@ function processHit(offsetMs:Float) {
 		+ quaver_getScore());
 }
 
-/**
- * Processes a miss. Resets combo and adds miss weight to accuracy.
- */
-function processMiss() {
-	quaver_combo = 0;
-	quaver_totalNotes = quaver_totalNotes + 1;
-	quaver_weightedSum = quaver_weightedSum + quaver_missWeight;
-
-	debug('MISS! | Combo: 0 | Score: ' + quaver_getScore());
-}
-
 // ========================================
 // HELPER FUNCTIONS
 // ========================================
+
+/**
+ * Overrides Conductor.safeZoneOffset to match Quaver's miss window.
+ * Uses quaver_missWindow * playbackRate.
+ * Psych default is ~166.67ms (10 safeFrames / 60 * 1000).
+ * Without this, presets with wider windows (Peaceful=218ms, Lenient=198ms, etc.)
+ * would have notes auto-missed by Psych before Quaver can judge them.
+ */
+function quaver_applySafeZone() {
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	Conductor.safeZoneOffset = quaver_missWindow * playbackRate;
+	debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (missWindow=' + quaver_missWindow + 'ms)');
+}
 
 /**
  * Enables or disables the Quaver scoring system
@@ -540,6 +540,23 @@ function quaver_getKadeEngineStyle():Bool {
 	return quaver_kadeEngineStyle;
 }
 
+function processMiss() {
+	quaver_combo = 0;
+	quaver_totalNotes = quaver_totalNotes + 1;
+	quaver_weightedSum = quaver_weightedSum + quaver_missWeight;
+}
+
+function processNote(note:Note) {
+	var noteDiff = note.strumTime - Conductor.songPosition;
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	var offsetMs = Math.abs(noteDiff / playbackRate);
+
+	processHit(offsetMs);
+
+	if (quaver_replaceScoreText)
+		quaver_updateScoreText();
+}
+
 // ========================================
 // SCORE TEXT
 // ========================================
@@ -554,36 +571,25 @@ function quaver_updateScoreText() {
 
 	var score = quaver_getScore();
 	var misses = game.songMisses;
-	var hasHitNotes = (quaver_totalNotes > 0);
+	var prefix = quaver_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses : 'Score: ' + score + ' | Misses: ' + misses;
 
-	var scoreText = '';
-
-	if (hasHitNotes) {
-		var accuracy = quaver_getAccuracy();
-		var formattedPercent = quaver_formatPercent(accuracy);
-		var grade = quaver_getGrade(accuracy);
-		var ratingFC = quaver_getRatingFC();
-
-		scoreText = quaver_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC
-			+ ') ' + grade : 'Score: '
-			+ score
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: '
-			+ grade
-			+ ' ('
-			+ formattedPercent
-			+ '%) - '
-			+ ratingFC;
-	} else {
-		scoreText = quaver_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ?' : 'Score: '
-			+ score
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: ?';
+	if (quaver_totalNotes <= 0) {
+		game.scoreTxt.text = prefix + (quaver_kadeEngineStyle ? ' | Accuracy: ?' : ' | Rating: ?');
+		return;
 	}
 
-	game.scoreTxt.text = scoreText;
+	var accuracy = quaver_getAccuracy();
+	var formattedPercent = quaver_formatPercent(accuracy);
+	var grade = quaver_getGrade(accuracy);
+	var ratingFC = quaver_getRatingFC();
+
+	game.scoreTxt.text = quaver_kadeEngineStyle ? prefix + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC + ') ' + grade : prefix
+		+ ' | Rating: '
+		+ grade
+		+ ' ('
+		+ formattedPercent
+		+ '%) - '
+		+ ratingFC;
 }
 
 // ========================================
@@ -641,15 +647,8 @@ function onCreate() {
 function onCreatePost() {
 	quaver_resetScoring();
 
-	// Override Psych Engine's safe zone to match Quaver's miss window
-	// Psych default is ~166.67ms (10 safeFrames / 60 * 1000)
-	// Without this, presets with wider windows (Peaceful=218ms, Lenient=198ms, etc.)
-	// would have notes auto-missed by Psych before Quaver can judge them
-	if (quaver_isActiveSystem) {
-		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-		Conductor.safeZoneOffset = quaver_missWindow * playbackRate;
-		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (missWindow=' + quaver_missWindow + 'ms)');
-	}
+	if (quaver_isActiveSystem)
+		quaver_applySafeZone();
 
 	debug('Quaver scoring ready');
 }
@@ -669,37 +668,22 @@ function onUpdateScore(miss:Bool) {
 }
 
 function goodNoteHit(note:Note) {
-	if (note.isSustainNote || !note.mustPress)
-		return;
-	if (!quaver_enabled)
+	if (note.isSustainNote || !note.mustPress || !quaver_enabled)
 		return;
 
-	// Calculate timing offset
-	var noteDiff = note.strumTime - Conductor.songPosition;
-	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-	noteDiff = noteDiff / playbackRate;
-	var offsetMs = Math.abs(noteDiff);
-
-	// Process the hit
-	processHit(offsetMs);
-
-	if (quaver_replaceScoreText)
-		quaver_updateScoreText();
+	processNote(note);
 }
 
 function noteMiss(note:Note) {
-	if (note.isSustainNote || !note.mustPress)
-		return;
-	if (!quaver_enabled)
+	if (note.isSustainNote || !note.mustPress || !quaver_enabled)
 		return;
 
-	// Process the miss
 	processMiss();
+
+	debug('MISS! | Combo: 0 | Score: ' + quaver_getScore());
 
 	if (quaver_replaceScoreText)
 		quaver_updateScoreText();
 }
 
-function onDestroy() {
-	// Cleanup handled by other scripts
-}
+function onDestroy() {}

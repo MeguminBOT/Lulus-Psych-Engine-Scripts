@@ -10,7 +10,7 @@
 			- OD (Overall Difficulty) 0-10 for customizable hit windows.
 			- Hold note (sustain) tail judgements with 1.5x lenient timing windows.
 			- Playback rate modifier support with OD and score adjustments just like osu! (e.g., HalfTime, DoubleTime).
-			- Settings.json support (when using "Lulu's Feature Pack")
+			- Settings.json support (when using "Lulu's Scoring Systems" pack)
 				- Configure settings through the mod settings menu
 				- Settings from settings.json will override the default values in the script
 
@@ -58,8 +58,10 @@ var osu_200Hits = 0; // 200 - <=(97 - 3*OD)ms
 var osu_100Hits = 0; // 100 - <=(127 - 3*OD)ms
 var osu_50Hits = 0; // 50 - <=(151 - 3*OD)ms
 var osu_comboBreaks = 0; // Combo breaks from dropped sustains (tail misses)
+
 // --- Sustain Tail Tracking (Do Not Modify) ---
 var osu_tailLenience = 1.5; // osu!mania tail release window lenience multiplier
+
 // Active sustain tracking per column (noteData 0-3)
 // Each entry: { parentNote, lastTailStrumTime, holdBroken, tailProcessed }
 var osu_activeSustains:Array<Dynamic> = [null, null, null, null];
@@ -386,7 +388,6 @@ function processHit(offsetMs:Float) {
 	if (osu_bonus > 100)
 		osu_bonus = 100;
 
-	// Calculate score components
 	var factor = (osu_maxScore * osu_modMultiplier * 0.5) / osu_totalNotes;
 	var baseScore = factor * (hitValue / 320.0);
 	var bonusScore = factor * (hitBonusValue * Math.sqrt(osu_bonus) / 320.0);
@@ -395,7 +396,6 @@ function processHit(offsetMs:Float) {
 	osu_bonusScoreAccum = osu_bonusScoreAccum + bonusScore;
 	osu_currentScore = Math.round(osu_baseScoreAccum + osu_bonusScoreAccum);
 
-	// Update accuracy tracking
 	osu_accuracyNum = osu_accuracyNum + accuracyWeight;
 	osu_accuracyDen = osu_accuracyDen + 300.0;
 
@@ -413,7 +413,6 @@ function processHit(offsetMs:Float) {
  * @param holdBroken Whether the hold was broken (early release + re-press, or missed pieces)
  */
 function processTailHit(releaseOffsetMs:Float, holdBroken:Bool) {
-	// Get tail judgement with lenient windows
 	var judgement = osu_getTailJudgement(releaseOffsetMs);
 
 	// If hold was broken, cap judgement to 50 (Meh)
@@ -466,14 +465,12 @@ function processTailHit(releaseOffsetMs:Float, holdBroken:Bool) {
 		setVar('osu_50Hits', osu_50Hits);
 	}
 
-	// Update bonus
 	osu_bonus = osu_bonus + hitBonus - hitPunishment / osu_modDivider;
 	if (osu_bonus < 0)
 		osu_bonus = 0;
 	if (osu_bonus > 100)
 		osu_bonus = 100;
 
-	// Calculate score components
 	var factor = (osu_maxScore * osu_modMultiplier * 0.5) / osu_totalNotes;
 	var baseScore = factor * (hitValue / 320.0);
 	var bonusScore = factor * (hitBonusValue * Math.sqrt(osu_bonus) / 320.0);
@@ -482,7 +479,6 @@ function processTailHit(releaseOffsetMs:Float, holdBroken:Bool) {
 	osu_bonusScoreAccum = osu_bonusScoreAccum + bonusScore;
 	osu_currentScore = Math.round(osu_baseScoreAccum + osu_bonusScoreAccum);
 
-	// Update accuracy tracking
 	osu_accuracyNum = osu_accuracyNum + accuracyWeight;
 	osu_accuracyDen = osu_accuracyDen + 300.0;
 
@@ -525,27 +521,20 @@ function processTailMiss() {
 	debug('Tail Miss! Bonus reset to 0 | Score: ' + osu_currentScore);
 }
 
-/**
- * Processes a miss, resetting the bonus multiplier and updating accuracy.
- * Miss: HitValue=0, HitBonusValue=0, Bonus resets to 0.
- */
-function processMiss() {
-	// Bonus resets to 0 on miss (infinite punishment)
-	osu_bonus = 0;
-
-	// No score added (HitValue=0, HitBonusValue=0)
-
-	// Update accuracy tracking (miss = 0 weight out of 300 max)
-	osu_accuracyDen = osu_accuracyDen + 300.0;
-
-	osu_notesProcessed = osu_notesProcessed + 1;
-
-	debug('Miss! Bonus reset to 0 | Score: ' + osu_currentScore);
-}
-
 // ========================================
 // HELPER FUNCTIONS
 // ========================================
+
+/**
+ * Overrides Conductor.safeZoneOffset to match osu!mania's miss window.
+ * Uses the formula: (188 - 3 * OD) * playbackRate
+ */
+function osu_applySafeZone() {
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	var outerWindow = 188.0 - 3.0 * osu_od;
+	Conductor.safeZoneOffset = outerWindow * playbackRate;
+	debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (missWindow=' + outerWindow + 'ms)');
+}
 
 /**
  * Enables or disables the osu!mania scoring system
@@ -786,6 +775,167 @@ function osu_getReplaceScoreText():Bool {
 	return osu_replaceScoreText;
 }
 
+function processMiss() {
+	osu_bonus = 0;
+	osu_accuracyDen = osu_accuracyDen + 300.0;
+	osu_notesProcessed = osu_notesProcessed + 1;
+}
+
+function processNote(note:Note) {
+	// Handle sustain pieces - track active sustains for release timing
+	if (note.isSustainNote) {
+		if (note.parent == null)
+			return;
+
+		var isLastTail = false;
+		var parentTail = note.parent.tail;
+		if (parentTail != null && parentTail.length > 0) {
+			var lastNote = parentTail[parentTail.length - 1];
+			if (lastNote == note)
+				isLastTail = true;
+		}
+
+		if (!isLastTail)
+			return;
+
+		// Last tail piece hit while still holding = held to completion
+		var active = osu_activeSustains[note.noteData];
+		if (active != null && !active.tailProcessed) {
+			active.tailProcessed = true;
+			ensureNotesCounted();
+
+			var noteDiff = note.strumTime - Conductor.songPosition;
+			var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+			processTailHit(noteDiff / playbackRate, active.holdBroken);
+
+			osu_activeSustains[note.noteData] = null;
+			debug('Tail completed (held to end) on column ' + note.noteData);
+
+			if (osu_replaceScoreText)
+				osu_updateScoreText();
+		}
+		return;
+	}
+
+	ensureNotesCounted();
+
+	var noteDiff = note.strumTime - Conductor.songPosition;
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	processHit(noteDiff / playbackRate);
+
+	// If this head note has sustain pieces, start tracking for release timing
+	if (note.tail != null && note.tail.length > 0) {
+		var lastTail = note.tail[note.tail.length - 1];
+		osu_activeSustains[note.noteData] = {
+			parentNote: note,
+			lastTailStrumTime: lastTail.strumTime,
+			holdBroken: false,
+			tailProcessed: false
+		};
+		debug('Tracking sustain on column ' + note.noteData + ' (tail end: ' + lastTail.strumTime + 'ms)');
+	}
+
+	if (osu_replaceScoreText)
+		osu_updateScoreText();
+}
+
+function processNoteMiss(note:Note) {
+	if (note.isSustainNote) {
+		// Undo engine's songMisses++ for sustain pieces (combo break, not a miss)
+		game.songMisses = game.songMisses - 1;
+
+		if (note.parent == null)
+			return;
+
+		var isLastTail = false;
+		var parentTail = note.parent.tail;
+		if (parentTail != null && parentTail.length > 0) {
+			var lastNote = parentTail[parentTail.length - 1];
+			if (lastNote == note)
+				isLastTail = true;
+		}
+
+		// Track hold break if an intermediate piece was missed while sustain is active
+		if (!isLastTail) {
+			var active = osu_activeSustains[note.noteData];
+			if (active != null && !active.tailProcessed) {
+				active.holdBroken = true;
+				osu_combo = 0;
+			}
+			return;
+		}
+
+		// Last tail piece missed - check if already processed via onKeyRelease
+		var active = osu_activeSustains[note.noteData];
+		if (active != null && active.tailProcessed) {
+			osu_activeSustains[note.noteData] = null;
+			return; // Already scored via release timing
+		}
+
+		// Tail was never processed (head was missed, or never tracked)
+		ensureNotesCounted();
+		processTailMiss();
+
+		if (active != null)
+			osu_activeSustains[note.noteData] = null;
+
+		if (osu_replaceScoreText)
+			osu_updateScoreText();
+		return;
+	}
+
+	ensureNotesCounted();
+	processMiss();
+
+	debug('Miss! Bonus reset to 0 | Score: ' + osu_currentScore);
+
+	if (osu_replaceScoreText)
+		osu_updateScoreText();
+}
+
+/**
+ * Processes a key release for sustain tail timing.
+ * Calculates release offset vs tail end, scores or marks hold as broken.
+ * @param key Column index (0-3: left, down, up, right)
+ */
+function processKeyRelease(key:Int) {
+	var active = osu_activeSustains[key];
+	if (active == null || active.tailProcessed)
+		return;
+
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	var releaseOffset = active.lastTailStrumTime - Conductor.songPosition;
+	releaseOffset = releaseOffset / playbackRate;
+
+	var absOffset = Math.abs(releaseOffset);
+	var missWindow = osu_getTailHitWindow('miss');
+
+	if (absOffset > missWindow) {
+		active.holdBroken = true;
+		debug('Hold broken (released early: ' + Math.round(releaseOffset * 100) / 100 + 'ms) on column ' + key);
+		return;
+	}
+
+	active.tailProcessed = true;
+	ensureNotesCounted();
+	processTailHit(releaseOffset, active.holdBroken);
+	debug('Tail release on column ' + key + ' at offset ' + Math.round(releaseOffset * 100) / 100 + 'ms');
+
+	if (active.parentNote != null && active.parentNote.tail != null) {
+		for (child in active.parentNote.tail) {
+			if (child != null && !child.wasGoodHit) {
+				child.wasGoodHit = true;
+				child.ignoreNote = true;
+			}
+		}
+	}
+
+	osu_activeSustains[key] = null;
+
+	if (osu_replaceScoreText)
+		osu_updateScoreText();
+}
+
 // ========================================
 // SCORE TEXT
 // ========================================
@@ -801,40 +951,25 @@ function osu_updateScoreText() {
 	var score = osu_getScore();
 	var misses = game.songMisses;
 	var cbs = osu_comboBreaks;
-	var hasHitNotes = (osu_accuracyDen > 0);
+	var prefix = 'Score: ' + score + ' | Combo Breaks: ' + cbs + ' | Misses: ' + misses;
 
-	var scoreText = '';
-
-	if (hasHitNotes) {
-		var accuracy = osu_getAccuracy();
-		var formattedPercent = osu_formatPercent(accuracy);
-		var grade = osu_getGrade(accuracy);
-		var ratingFC = osu_getRatingFC();
-
-		scoreText = osu_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + cbs + ' | Misses: ' + misses + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC + ') '
-			+ grade : 'Score: '
-			+ score
-			+ ' | Combo Breaks: '
-			+ cbs
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: '
-			+ grade
-			+ ' ('
-			+ formattedPercent
-			+ '%) - '
-			+ ratingFC;
-	} else {
-		scoreText = osu_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + cbs + ' | Misses: ' + misses + ' | Accuracy: ?' : 'Score: '
-			+ score
-			+ ' | Combo Breaks: '
-			+ cbs
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: ?';
+	if (osu_accuracyDen <= 0) {
+		game.scoreTxt.text = prefix + (osu_kadeEngineStyle ? ' | Accuracy: ?' : ' | Rating: ?');
+		return;
 	}
 
-	game.scoreTxt.text = scoreText;
+	var accuracy = osu_getAccuracy();
+	var formattedPercent = osu_formatPercent(accuracy);
+	var grade = osu_getGrade(accuracy);
+	var ratingFC = osu_getRatingFC();
+
+	game.scoreTxt.text = osu_kadeEngineStyle ? prefix + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC + ') ' + grade : prefix
+		+ ' | Rating: '
+		+ grade
+		+ ' ('
+		+ formattedPercent
+		+ '%) - '
+		+ ratingFC;
 }
 
 // ========================================
@@ -902,12 +1037,8 @@ function onCreatePost() {
 
 	debug('Total notes: ' + osu_totalNotes + ' | Max possible score: ' + osu_getMaxPossibleScore());
 
-	if (osu_isActiveSystem) {
-		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-		var outerWindow = 188.0 - 3.0 * osu_od;
-		Conductor.safeZoneOffset = outerWindow * playbackRate;
-		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (missWindow=' + outerWindow + 'ms)');
-	}
+	if (osu_isActiveSystem)
+		osu_applySafeZone();
 }
 
 function preUpdateScore(miss:Bool) {
@@ -925,74 +1056,10 @@ function onUpdateScore(miss:Bool) {
 }
 
 function goodNoteHit(note:Note) {
-	if (!note.mustPress)
-		return;
-	if (!osu_enabled)
+	if (!note.mustPress || !osu_enabled)
 		return;
 
-	// Handle sustain pieces - track active sustains for release timing
-	if (note.isSustainNote) {
-		if (note.parent == null)
-			return;
-
-		// Check if this is the last tail piece of the sustain
-		var isLastTail = false;
-		var parentTail = note.parent.tail;
-		if (parentTail != null && parentTail.length > 0) {
-			var lastNote = parentTail[parentTail.length - 1];
-			if (lastNote == note)
-				isLastTail = true;
-		}
-
-		if (!isLastTail)
-			return;
-
-		// Last tail piece hit while still holding = held to completion
-		var active = osu_activeSustains[note.noteData];
-		if (active != null && !active.tailProcessed) {
-			active.tailProcessed = true;
-			ensureNotesCounted();
-
-			// Player held past the tail end - near-perfect release timing
-			var noteDiff = note.strumTime - Conductor.songPosition;
-			var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-			noteDiff = noteDiff / playbackRate;
-			processTailHit(noteDiff, active.holdBroken);
-
-			osu_activeSustains[note.noteData] = null;
-			debug('Tail completed (held to end) on column ' + note.noteData);
-
-			if (osu_replaceScoreText)
-				osu_updateScoreText();
-		}
-		return;
-	}
-
-	// Regular (non-sustain) note hit
-	ensureNotesCounted();
-
-	// Calculate timing offset
-	var noteDiff = note.strumTime - Conductor.songPosition;
-	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-	noteDiff = noteDiff / playbackRate;
-
-	// Process the hit using absolute offset
-	processHit(noteDiff);
-
-	// If this head note has sustain pieces, start tracking for release timing
-	if (note.tail != null && note.tail.length > 0) {
-		var lastTail = note.tail[note.tail.length - 1];
-		osu_activeSustains[note.noteData] = {
-			parentNote: note,
-			lastTailStrumTime: lastTail.strumTime,
-			holdBroken: false,
-			tailProcessed: false
-		};
-		debug('Tracking sustain on column ' + note.noteData + ' (tail end: ' + lastTail.strumTime + 'ms)');
-	}
-
-	if (osu_replaceScoreText)
-		osu_updateScoreText();
+	processNote(note);
 }
 
 /**
@@ -1008,109 +1075,12 @@ function onKeyRelease(key:Int) {
 	if (key < 0 || key > 3)
 		return;
 
-	var active = osu_activeSustains[key];
-	if (active == null || active.tailProcessed)
-		return;
-
-	// Player released the key - calculate release timing vs tail end
-	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-	var releaseOffset = active.lastTailStrumTime - Conductor.songPosition;
-	releaseOffset = releaseOffset / playbackRate;
-
-	// Check if release is beyond the tail miss window
-	var absOffset = Math.abs(releaseOffset);
-	var missWindow = osu_getTailHitWindow('miss');
-
-	if (absOffset > missWindow) {
-		// Released too early - mark hold as broken but don't finalize
-		// Engine will fire noteMiss for remaining pieces, breaking combo naturally
-		// Player can re-press to continue the sustain
-		active.holdBroken = true;
-		debug('Hold broken (released early: ' + Math.round(releaseOffset * 100) / 100 + 'ms) on column ' + key);
-		return;
-	}
-
-	// Released near the tail end - score the release timing
-	active.tailProcessed = true;
-	ensureNotesCounted();
-	processTailHit(releaseOffset, active.holdBroken);
-	debug('Tail release on column ' + key + ' at offset ' + Math.round(releaseOffset * 100) / 100 + 'ms');
-
-	// Mark remaining sustain tail pieces as handled to prevent double-processing
-	if (active.parentNote != null && active.parentNote.tail != null) {
-		for (child in active.parentNote.tail) {
-			if (child != null && !child.wasGoodHit) {
-				child.wasGoodHit = true;
-				child.ignoreNote = true;
-			}
-		}
-	}
-
-	osu_activeSustains[key] = null;
-
-	if (osu_replaceScoreText)
-		osu_updateScoreText();
+	processKeyRelease(key);
 }
 
 function noteMiss(note:Note) {
-	if (!note.mustPress)
-		return;
-	if (!osu_enabled)
+	if (!note.mustPress || !osu_enabled)
 		return;
 
-	// Handle sustain note misses
-	if (note.isSustainNote) {
-		// Undo engine's songMisses++ for sustain pieces (combo break, not a miss)
-		game.songMisses = game.songMisses - 1;
-
-		if (note.parent == null)
-			return;
-
-		// Check if this is the last tail piece of the sustain
-		var isLastTail = false;
-		var parentTail = note.parent.tail;
-		if (parentTail != null && parentTail.length > 0) {
-			var lastNote = parentTail[parentTail.length - 1];
-			if (lastNote == note)
-				isLastTail = true;
-		}
-
-		// Track hold break if an intermediate piece was missed while sustain is active
-		if (!isLastTail) {
-			var active = osu_activeSustains[note.noteData];
-			if (active != null && !active.tailProcessed) {
-				active.holdBroken = true;
-				osu_combo = 0;
-			}
-			return;
-		}
-
-		// Last tail piece missed - check if already processed via onKeyRelease
-		var active = osu_activeSustains[note.noteData];
-		if (active != null && active.tailProcessed) {
-			osu_activeSustains[note.noteData] = null;
-			return; // Already scored via release timing
-		}
-
-		// Tail was never processed (head was missed, or never tracked)
-		ensureNotesCounted();
-		processTailMiss();
-
-		if (active != null)
-			osu_activeSustains[note.noteData] = null;
-
-		if (osu_replaceScoreText)
-			osu_updateScoreText();
-		return;
-	}
-
-	// Regular (non-sustain) note miss
-	ensureNotesCounted();
-
-	// If this head note had a sustain, the tail miss will be handled
-	// separately when the last tail piece is missed
-	processMiss();
-
-	if (osu_replaceScoreText)
-		osu_updateScoreText();
+	processNoteMiss(note);
 }

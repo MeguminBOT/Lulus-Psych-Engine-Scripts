@@ -13,7 +13,7 @@
 			- O2Jam combo scoring: score += judgement_value × combo
 			- BAD and MISS break combo (O2Jam rules)
 			- *Optional* Kade Engine style score text formatting
-			- Settings.json support (when using "Lulu's Feature Pack")
+			- Settings.json support (when using "Lulu's Scoring Systems" pack)
 				- Configure settings through the mod settings menu
 				- Settings from settings.json will override the default values in the script
 
@@ -52,7 +52,6 @@ var o2jam_badWindow = 100.0;
 var o2jam_coolWeight = 1.0;
 var o2jam_goodWeight = 0.7;
 var o2jam_badWeight = 0.4;
-var o2jam_missWeight = 0.0;
 
 // --- Score State (Do Not Modify) ---
 var o2jam_songScore = 0; // Displayed song score
@@ -284,7 +283,6 @@ function processHit(offsetMs:Float) {
 	// Score += judgement_value × combo
 	o2jam_songScore = o2jam_songScore + Math.round(weight * o2jam_combo);
 
-	// Update accuracy tracking
 	o2jam_weightedSum = o2jam_weightedSum + weight;
 	o2jam_totalNotes = o2jam_totalNotes + 1;
 
@@ -298,20 +296,19 @@ function processHit(offsetMs:Float) {
 		+ o2jam_songScore);
 }
 
-/**
- * Processes a tap miss. Resets combo and adds 0 to accuracy.
- */
-function processMiss() {
-	o2jam_combo = 0;
-	o2jam_totalNotes = o2jam_totalNotes + 1;
-	// weightedSum += 0 (miss weight is 0)
-
-	debug('Miss! | Combo: 0 | Score: ' + o2jam_songScore);
-}
-
 // ========================================
 // HELPER FUNCTIONS
 // ========================================
+
+/**
+ * Overrides Conductor.safeZoneOffset to match O2Jam's bad window.
+ * Uses o2jam_badWindow * playbackRate.
+ */
+function o2jam_applySafeZone() {
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	Conductor.safeZoneOffset = o2jam_badWindow * playbackRate;
+	debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (badWindow=' + o2jam_badWindow + 'ms)');
+}
 
 /**
  * Enables or disables the O2Jam scoring system
@@ -498,6 +495,22 @@ function o2jam_getKadeEngineStyle():Bool {
 	return o2jam_kadeEngineStyle;
 }
 
+function processMiss() {
+	o2jam_combo = 0;
+	o2jam_totalNotes = o2jam_totalNotes + 1;
+}
+
+function processNote(note:Note) {
+	var noteDiff = note.strumTime - Conductor.songPosition;
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	var offsetMs = Math.abs(noteDiff / playbackRate);
+
+	processHit(offsetMs);
+
+	if (o2jam_replaceScoreText)
+		o2jam_updateScoreText();
+}
+
 // ========================================
 // SCORE TEXT
 // ========================================
@@ -512,36 +525,25 @@ function o2jam_updateScoreText() {
 
 	var score = o2jam_getScore();
 	var misses = game.songMisses;
-	var hasHitNotes = (o2jam_totalNotes > 0);
+	var prefix = o2jam_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses : 'Score: ' + score + ' | Misses: ' + misses;
 
-	var scoreText = '';
-
-	if (hasHitNotes) {
-		var accuracy = o2jam_getAccuracy();
-		var formattedPercent = o2jam_formatPercent(accuracy);
-		var grade = o2jam_getGrade(accuracy);
-		var ratingFC = o2jam_getRatingFC();
-
-		scoreText = o2jam_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC
-			+ ') ' + grade : 'Score: '
-			+ score
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: '
-			+ grade
-			+ ' ('
-			+ formattedPercent
-			+ '%) - '
-			+ ratingFC;
-	} else {
-		scoreText = o2jam_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ?' : 'Score: '
-			+ score
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: ?';
+	if (o2jam_totalNotes <= 0) {
+		game.scoreTxt.text = prefix + (o2jam_kadeEngineStyle ? ' | Accuracy: ?' : ' | Rating: ?');
+		return;
 	}
 
-	game.scoreTxt.text = scoreText;
+	var accuracy = o2jam_getAccuracy();
+	var formattedPercent = o2jam_formatPercent(accuracy);
+	var grade = o2jam_getGrade(accuracy);
+	var ratingFC = o2jam_getRatingFC();
+
+	game.scoreTxt.text = o2jam_kadeEngineStyle ? prefix + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC + ') ' + grade : prefix
+		+ ' | Rating: '
+		+ grade
+		+ ' ('
+		+ formattedPercent
+		+ '%) - '
+		+ ratingFC;
 }
 
 // ========================================
@@ -605,11 +607,8 @@ function onCreatePost() {
 
 	debug('O2Jam scoring ready');
 
-	if (o2jam_isActiveSystem) {
-		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-		Conductor.safeZoneOffset = o2jam_badWindow * playbackRate;
-		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (badWindow=' + o2jam_badWindow + 'ms)');
-	}
+	if (o2jam_isActiveSystem)
+		o2jam_applySafeZone();
 }
 
 function onBeatHit() {
@@ -638,37 +637,22 @@ function onUpdateScore(miss:Bool) {
 }
 
 function goodNoteHit(note:Note) {
-	if (note.isSustainNote || !note.mustPress)
-		return;
-	if (!o2jam_enabled)
+	if (note.isSustainNote || !note.mustPress || !o2jam_enabled)
 		return;
 
-	// Calculate timing offset
-	var noteDiff = note.strumTime - Conductor.songPosition;
-	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-	noteDiff = noteDiff / playbackRate;
-	var offsetMs = Math.abs(noteDiff);
-
-	// Process the hit
-	processHit(offsetMs);
-
-	if (o2jam_replaceScoreText)
-		o2jam_updateScoreText();
+	processNote(note);
 }
 
 function noteMiss(note:Note) {
-	if (note.isSustainNote || !note.mustPress)
-		return;
-	if (!o2jam_enabled)
+	if (note.isSustainNote || !note.mustPress || !o2jam_enabled)
 		return;
 
-	// Process the miss
 	processMiss();
+
+	debug('Miss! | Combo: 0 | Score: ' + o2jam_songScore);
 
 	if (o2jam_replaceScoreText)
 		o2jam_updateScoreText();
 }
 
-function onDestroy() {
-	// Cleanup handled by other scripts
-}
+function onDestroy() {}

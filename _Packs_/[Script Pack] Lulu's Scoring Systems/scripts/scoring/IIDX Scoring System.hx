@@ -224,31 +224,28 @@ function processHit(offsetMs:Float) {
 		setVar('iidx_awfulHits', iidx_awfulHits);
 	}
 
-	// Track max combo
 	if (iidx_combo > iidx_maxCombo)
 		iidx_maxCombo = iidx_combo;
 
-	// Update total notes
 	iidx_totalNotes = iidx_totalNotes + 1;
 
 	debug('Hit: ' + judgement + ' (' + Math.round(offsetMs * 100) / 100 + 'ms) | EX: ' + iidx_exScore + '/' + (iidx_totalNotes * 2) + ' | Combo: ' +
 		iidx_combo);
 }
 
-/**
- * Processes a POOR (complete miss). Resets combo and adds 0 to EX Score.
- */
-function processMiss() {
-	iidx_combo = 0;
-	iidx_totalNotes = iidx_totalNotes + 1;
-	// EX += 0 (POOR gives nothing)
-
-	debug('POOR! | Combo: 0 | EX: ' + iidx_exScore + '/' + (iidx_totalNotes * 2));
-}
-
 // ========================================
 // HELPER FUNCTIONS
 // ========================================
+
+/**
+ * Overrides Conductor.safeZoneOffset to match IIDX's awful window.
+ * Uses iidx_awfulWindow * playbackRate.
+ */
+function iidx_applySafeZone() {
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	Conductor.safeZoneOffset = iidx_awfulWindow * playbackRate;
+	debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (awfulWindow=' + iidx_awfulWindow + 'ms)');
+}
 
 /**
  * Enables or disables the IIDX scoring system
@@ -476,6 +473,22 @@ function iidx_getKadeEngineStyle():Bool {
 	return iidx_kadeEngineStyle;
 }
 
+function processMiss() {
+	iidx_combo = 0;
+	iidx_totalNotes = iidx_totalNotes + 1;
+}
+
+function processNote(note:Note) {
+	var noteDiff = note.strumTime - Conductor.songPosition;
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	var offsetMs = Math.abs(noteDiff / playbackRate);
+
+	processHit(offsetMs);
+
+	if (iidx_replaceScoreText)
+		iidx_updateScoreText();
+}
+
 // ========================================
 // SCORE TEXT
 // ========================================
@@ -489,36 +502,27 @@ function iidx_updateScoreText() {
 		return;
 
 	var misses = game.songMisses;
-	var hasHitNotes = (iidx_totalNotes > 0);
 
-	var scoreText = '';
-
-	if (hasHitNotes) {
-		var exRate = iidx_getExRate();
-		var accuracy = iidx_getAccuracy();
-		var formattedPercent = iidx_formatPercent(accuracy);
-		var exMax = iidx_totalNotes * 2;
-		var grade = iidx_getGrade(exRate);
-		var ratingFC = iidx_getRatingFC();
-
-		scoreText = iidx_kadeEngineStyle ? 'EX: ' + iidx_exScore + '/' + exMax + ' | Combo Breaks: ' + misses + ' | EX Rate: ' + formattedPercent + ' % | ('
-			+ ratingFC + ') ' + grade : 'EX: '
-			+ iidx_exScore
-			+ '/'
-			+ exMax
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: '
-			+ grade
-			+ ' ('
-			+ formattedPercent
-			+ '%) - '
-			+ ratingFC;
-	} else {
-		scoreText = iidx_kadeEngineStyle ? 'EX: 0 | Combo Breaks: ' + misses + ' | EX Rate: ?' : 'EX: 0 | Misses: ' + misses + ' | Rating: ?';
+	if (iidx_totalNotes <= 0) {
+		game.scoreTxt.text = iidx_kadeEngineStyle ? 'EX: 0 | Combo Breaks: ' + misses + ' | EX Rate: ?' : 'EX: 0 | Misses: ' + misses + ' | Rating: ?';
+		return;
 	}
 
-	game.scoreTxt.text = scoreText;
+	var exRate = iidx_getExRate();
+	var accuracy = iidx_getAccuracy();
+	var formattedPercent = iidx_formatPercent(accuracy);
+	var exMax = iidx_totalNotes * 2;
+	var grade = iidx_getGrade(exRate);
+	var ratingFC = iidx_getRatingFC();
+	var prefix = iidx_kadeEngineStyle ? 'EX: ' + iidx_exScore + '/' + exMax + ' | Combo Breaks: ' + misses : 'EX: ' + iidx_exScore + '/' + exMax + ' | Misses: ' + misses;
+
+	game.scoreTxt.text = iidx_kadeEngineStyle ? prefix + ' | EX Rate: ' + formattedPercent + ' % | (' + ratingFC + ') ' + grade : prefix
+		+ ' | Rating: '
+		+ grade
+		+ ' ('
+		+ formattedPercent
+		+ '%) - '
+		+ ratingFC;
 }
 
 // ========================================
@@ -577,11 +581,8 @@ function onCreatePost() {
 	iidx_resetScoring();
 	debug('IIDX scoring ready');
 
-	if (iidx_isActiveSystem) {
-		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-		Conductor.safeZoneOffset = iidx_awfulWindow * playbackRate;
-		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (awfulWindow=' + iidx_awfulWindow + 'ms)');
-	}
+	if (iidx_isActiveSystem)
+		iidx_applySafeZone();
 }
 
 function preUpdateScore(miss:Bool) {
@@ -599,37 +600,22 @@ function onUpdateScore(miss:Bool) {
 }
 
 function goodNoteHit(note:Note) {
-	if (note.isSustainNote || !note.mustPress)
-		return;
-	if (!iidx_enabled)
+	if (note.isSustainNote || !note.mustPress || !iidx_enabled)
 		return;
 
-	// Calculate timing offset
-	var noteDiff = note.strumTime - Conductor.songPosition;
-	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-	noteDiff = noteDiff / playbackRate;
-	var offsetMs = Math.abs(noteDiff);
-
-	// Process the hit
-	processHit(offsetMs);
-
-	if (iidx_replaceScoreText)
-		iidx_updateScoreText();
+	processNote(note);
 }
 
 function noteMiss(note:Note) {
-	if (note.isSustainNote || !note.mustPress)
-		return;
-	if (!iidx_enabled)
+	if (note.isSustainNote || !note.mustPress || !iidx_enabled)
 		return;
 
-	// Process the POOR
 	processMiss();
+
+	debug('POOR! | Combo: 0 | EX: ' + iidx_exScore + '/' + (iidx_totalNotes * 2));
 
 	if (iidx_replaceScoreText)
 		iidx_updateScoreText();
 }
 
-function onDestroy() {
-	// Cleanup handled by other scripts
-}
+function onDestroy() {}

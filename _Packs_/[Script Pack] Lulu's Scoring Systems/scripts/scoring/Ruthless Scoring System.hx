@@ -10,7 +10,7 @@
 			- Linear falloff with 2x penalty past 50ms
 			- 7 judgement tiers: Flawless, Precise, Great, Good, Ok, Sloppy, Barely
 			- *Optional* Kade Engine style score text formatting
-			- Settings.json support (when using "Lulu's Feature Pack")
+			- Settings.json support (when using "Lulu's Scoring Systems" pack)
 
 		Scoring Curve:
 			- Hits within the perfect window (default <=10ms) = 100% points
@@ -236,17 +236,19 @@ function processHit(judgement:String) {
 	ruthless_songScore = Math.round(ruthless_baseScoreAccum + ruthless_bonusScoreAccum);
 }
 
-/**
- * Processes a miss using osu!mania-style bonus penalty.
- */
-function processMiss() {
-	// Miss resets bonus to 0 (harsh punishment for consistency tracker)
-	ruthless_bonus = 0;
-}
-
 // ========================================
 // HELPER FUNCTIONS
 // ========================================
+
+/**
+ * Overrides Conductor.safeZoneOffset to match Ruthless's miss window.
+ * Uses ruthless_missWindow * playbackRate.
+ */
+function ruthless_applySafeZone() {
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	Conductor.safeZoneOffset = ruthless_missWindow * playbackRate;
+	debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (missWindow=' + ruthless_missWindow + 'ms)');
+}
 
 /**
  * Enables or disables the Ruthless scoring system
@@ -300,7 +302,6 @@ function ruthless_getScore():Int {
 
 /**
  * Gets letter grade for a given percentage.
- * Ruthless uses the same grade thresholds as Wife3 for consistency.
  * @param percent Ruthless percentage (0-100)
  * @return Letter grade string
  */
@@ -354,7 +355,7 @@ function ruthless_getGrade(percent:Float):String {
 
 /**
  * Gets a timing window (in ms) for a given judgement tier.
- * @param windowType Window type: 'flawless', 'precise', 'decent', 'sloppy', 'barely'
+ * @param windowType Window type: 'flawless', 'precise', 'great', 'good', 'ok', 'sloppy', 'barely'
  * @return Timing window in milliseconds
  */
 function ruthless_getTimingWindow(windowType:String):Float {
@@ -560,6 +561,68 @@ function ruthless_getKadeEngineStyle():Bool {
 	return ruthless_kadeEngineStyle;
 }
 
+function processMiss() {
+	ruthless_maxPoints = ruthless_maxPoints + 1.0;
+	ruthless_bonus = 0;
+}
+
+function processNote(note:Note) {
+	var noteDiff = note.strumTime - Conductor.songPosition;
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	var offsetMs = Math.abs(noteDiff / playbackRate);
+
+	// Calculate accuracy via linear curve
+	var accuracy = ruthless(offsetMs);
+
+	ensureNotesCounted();
+
+	// Track judgements based on timing windows
+	if (offsetMs <= ruthless_perfectWindow) {
+		ruthless_flawlessHits = ruthless_flawlessHits + 1;
+		setVar('ruthless_flawlessHits', ruthless_flawlessHits);
+	} else if (offsetMs <= 20.0) {
+		ruthless_preciseHits = ruthless_preciseHits + 1;
+		setVar('ruthless_preciseHits', ruthless_preciseHits);
+	} else if (offsetMs <= 30.0) {
+		ruthless_greatHits = ruthless_greatHits + 1;
+		setVar('ruthless_greatHits', ruthless_greatHits);
+	} else if (offsetMs <= 40.0) {
+		ruthless_goodHits = ruthless_goodHits + 1;
+		setVar('ruthless_goodHits', ruthless_goodHits);
+	} else if (offsetMs <= 50.0) {
+		ruthless_okHits = ruthless_okHits + 1;
+		setVar('ruthless_okHits', ruthless_okHits);
+	} else if (offsetMs <= 75.0) {
+		ruthless_sloppyHits = ruthless_sloppyHits + 1;
+		setVar('ruthless_sloppyHits', ruthless_sloppyHits);
+	} else {
+		ruthless_barelyHits = ruthless_barelyHits + 1;
+		setVar('ruthless_barelyHits', ruthless_barelyHits);
+	}
+
+	// Update accuracy tracking (accuracy is 0-1, never negative)
+	ruthless_curPoints = ruthless_curPoints + accuracy;
+	ruthless_maxPoints = ruthless_maxPoints + 1.0;
+
+	// Update score via osu-style base+bonus system
+	var judgement = ruthless_getJudgement(offsetMs);
+	processHit(judgement);
+
+	// Break combo for hits later than 50ms (Sloppy, Barely)
+	if (offsetMs > 50.0) {
+		game.combo = 0;
+		ruthless_comboBreaks = ruthless_comboBreaks + 1;
+		setVar('ruthless_comboBreaks', ruthless_comboBreaks);
+	}
+
+	debug('Hit at ' + ruthless_formatPercent(offsetMs) + 'ms -> ' + judgement + ' (' + ruthless_formatPercent(accuracy * 100) + '%) | Score: '
+		+ ruthless_songScore + ' | Bonus: ' + Math.round(ruthless_bonus));
+
+	if (ruthless_replaceScoreText) {
+		ruthless_updateScoreText();
+	}
+}
+
 // ========================================
 // SCORE TEXT
 // ========================================
@@ -575,40 +638,25 @@ function ruthless_updateScoreText() {
 	var score = ruthless_getScore();
 	var misses = game.songMisses;
 	var cbs = ruthless_comboBreaks;
-	var hasHitNotes = (ruthless_maxPoints > 0);
+	var prefix = 'Score: ' + score + ' | Combo Breaks: ' + cbs + ' | Misses: ' + misses;
 
-	var scoreText = '';
-
-	if (hasHitNotes) {
-		var accuracy = ruthless_getAccuracy();
-		var formattedPercent = ruthless_formatPercent(accuracy);
-		var grade = ruthless_getGrade(accuracy);
-		var ratingFC = ruthless_getRatingFC();
-
-		scoreText = ruthless_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + cbs + ' | Misses: ' + misses + ' | Accuracy: ' + formattedPercent
-			+ ' % | (' + ratingFC + ') ' + grade : 'Score: '
-			+ score
-			+ ' | Combo Breaks: '
-			+ cbs
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: '
-			+ grade
-			+ ' ('
-			+ formattedPercent
-			+ '%) - '
-			+ ratingFC;
-	} else {
-		scoreText = ruthless_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + cbs + ' | Misses: ' + misses + ' | Accuracy: ?' : 'Score: '
-			+ score
-			+ ' | Combo Breaks: '
-			+ cbs
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: ?';
+	if (ruthless_maxPoints <= 0) {
+		game.scoreTxt.text = prefix + (ruthless_kadeEngineStyle ? ' | Accuracy: ?' : ' | Rating: ?');
+		return;
 	}
 
-	game.scoreTxt.text = scoreText;
+	var accuracy = ruthless_getAccuracy();
+	var formattedPercent = ruthless_formatPercent(accuracy);
+	var grade = ruthless_getGrade(accuracy);
+	var ratingFC = ruthless_getRatingFC();
+
+	game.scoreTxt.text = ruthless_kadeEngineStyle ? prefix + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC + ') ' + grade : prefix
+		+ ' | Rating: '
+		+ grade
+		+ ' ('
+		+ formattedPercent
+		+ '%) - '
+		+ ratingFC;
 }
 
 // ========================================
@@ -716,11 +764,8 @@ function onCreatePost() {
 	ruthless_resetScoring();
 	countTotalNotes();
 
-	if (ruthless_isActiveSystem) {
-		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-		Conductor.safeZoneOffset = ruthless_missWindow * playbackRate;
-		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (missWindow=' + ruthless_missWindow + 'ms)');
-	}
+	if (ruthless_isActiveSystem)
+		ruthless_applySafeZone();
 }
 
 function preUpdateScore(miss:Bool) {
@@ -740,78 +785,16 @@ function onUpdateScore(miss:Bool) {
 }
 
 function goodNoteHit(note:Note) {
-	if (note.isSustainNote || !note.mustPress)
-		return;
-	if (!ruthless_enabled)
+	if (note.isSustainNote || !note.mustPress || !ruthless_enabled)
 		return;
 
-	// Calculate timing offset
-	var noteDiff = note.strumTime - Conductor.songPosition;
-	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-	noteDiff = noteDiff / playbackRate;
-	var offsetMs = Math.abs(noteDiff);
-
-	// Calculate accuracy via linear curve
-	var accuracy = ruthless(offsetMs);
-
-	// Ensure notes are counted (catches chart modifications by other scripts)
-	ensureNotesCounted();
-
-	// Track judgements based on timing windows
-	if (offsetMs <= ruthless_perfectWindow) {
-		ruthless_flawlessHits = ruthless_flawlessHits + 1;
-		setVar('ruthless_flawlessHits', ruthless_flawlessHits);
-	} else if (offsetMs <= 20.0) {
-		ruthless_preciseHits = ruthless_preciseHits + 1;
-		setVar('ruthless_preciseHits', ruthless_preciseHits);
-	} else if (offsetMs <= 30.0) {
-		ruthless_greatHits = ruthless_greatHits + 1;
-		setVar('ruthless_greatHits', ruthless_greatHits);
-	} else if (offsetMs <= 40.0) {
-		ruthless_goodHits = ruthless_goodHits + 1;
-		setVar('ruthless_goodHits', ruthless_goodHits);
-	} else if (offsetMs <= 50.0) {
-		ruthless_okHits = ruthless_okHits + 1;
-		setVar('ruthless_okHits', ruthless_okHits);
-	} else if (offsetMs <= 75.0) {
-		ruthless_sloppyHits = ruthless_sloppyHits + 1;
-		setVar('ruthless_sloppyHits', ruthless_sloppyHits);
-	} else {
-		ruthless_barelyHits = ruthless_barelyHits + 1;
-		setVar('ruthless_barelyHits', ruthless_barelyHits);
-	}
-
-	// Update accuracy tracking (accuracy is 0-1, never negative)
-	ruthless_curPoints = ruthless_curPoints + accuracy;
-	ruthless_maxPoints = ruthless_maxPoints + 1.0;
-
-	// Update score via osu-style base+bonus system
-	var judgement = ruthless_getJudgement(offsetMs);
-	processHit(judgement);
-
-	// Break combo for hits later than 50ms (Sloppy, Barely)
-	if (offsetMs > 50.0) {
-		game.combo = 0;
-		ruthless_comboBreaks = ruthless_comboBreaks + 1;
-		setVar('ruthless_comboBreaks', ruthless_comboBreaks);
-	}
-
-	debug('Hit at ' + ruthless_formatPercent(offsetMs) + 'ms -> ' + judgement + ' (' + ruthless_formatPercent(accuracy * 100) + '%) | Score: '
-		+ ruthless_songScore + ' | Bonus: ' + Math.round(ruthless_bonus));
-
-	if (ruthless_replaceScoreText) {
-		ruthless_updateScoreText();
-	}
+	processNote(note);
 }
 
 function noteMiss(note:Note) {
-	if (note.isSustainNote || !note.mustPress)
-		return;
-	if (!ruthless_enabled)
+	if (note.isSustainNote || !note.mustPress || !ruthless_enabled)
 		return;
 
-	// Miss adds 0 points but still increases max possible (no negative penalty)
-	ruthless_maxPoints = ruthless_maxPoints + 1.0;
 	processMiss();
 
 	debug('Note missed - bonus reset | Score: ' + ruthless_songScore);
@@ -821,6 +804,4 @@ function noteMiss(note:Note) {
 	}
 }
 
-function onDestroy() {
-	// Cleanup handled by other scripts
-}
+function onDestroy() {}

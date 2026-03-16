@@ -29,7 +29,8 @@
 		Place this script in 'mods/YourMod/scripts/' or 'mods/scripts/'.
 
 	Script by AutisticLulu.
- */
+*/
+
 // ========================================
 // CONFIGURATION & VARIABLES
 // ========================================
@@ -41,16 +42,16 @@ var djmax_replaceScoreText = true;
 var djmax_kadeEngineStyle = false;
 
 // --- Timing Windows (PC version - fixed, BPM-independent) ---
-var djmax_max100Window = 16.0; // MAX 100%: ±16ms
-var djmax_max90Window = 33.0; // MAX 90%:  ±33ms
-var djmax_goodWindow = 66.0; // GOOD:     ±66ms
-var djmax_badWindow = 100.0; // BAD:      ±100ms (beyond = BREAK/MISS)
+var djmax_max100Window = 16.0;
+var djmax_max90Window = 33.0;
+var djmax_goodWindow = 66.0;
+var djmax_badWindow = 100.0;
+
 // --- Judgement Weights (Do Not Modify) ---
 var djmax_max100Weight = 1.0;
 var djmax_max90Weight = 0.9;
 var djmax_goodWeight = 0.5;
 var djmax_badWeight = 0.1;
-var djmax_missWeight = 0.0;
 
 // --- Score State (Do Not Modify) ---
 var djmax_combo = 0;
@@ -195,41 +196,44 @@ function djmax_getJudgement(offsetMs:Float):String {
  *   BAD      = 0.10
  *   BREAK    = 0.00
  *
- * @param offsetMs Timing offset in milliseconds
+ * @param offsetMs Absolute timing offset in milliseconds
  */
 function processHit(offsetMs:Float) {
-	var judgement = djmax_getJudgement(offsetMs);
+	var weight:Float;
+	var judgement:String;
 
-	var weight = 0.0;
-
-	if (judgement == 'max100') {
+	if (offsetMs <= djmax_max100Window) {
 		weight = djmax_max100Weight;
+		judgement = 'max100';
 		djmax_combo = djmax_combo + 1;
 		djmax_max100Hits = djmax_max100Hits + 1;
 		setVar('djmax_max100Hits', djmax_max100Hits);
-	} else if (judgement == 'max90') {
+
+	} else if (offsetMs <= djmax_max90Window) {
 		weight = djmax_max90Weight;
+		judgement = 'max90';
 		djmax_combo = djmax_combo + 1;
 		djmax_max90Hits = djmax_max90Hits + 1;
 		setVar('djmax_max90Hits', djmax_max90Hits);
-	} else if (judgement == 'good') {
+
+	} else if (offsetMs <= djmax_goodWindow) {
 		weight = djmax_goodWeight;
+		judgement = 'good';
 		djmax_combo = 0;
 		djmax_goodHits = djmax_goodHits + 1;
 		setVar('djmax_goodHits', djmax_goodHits);
+
 	} else {
-		// BAD - combo breaks
 		weight = djmax_badWeight;
+		judgement = 'bad';
 		djmax_combo = 0;
 		djmax_badHits = djmax_badHits + 1;
 		setVar('djmax_badHits', djmax_badHits);
 	}
 
-	// Track max combo
 	if (djmax_combo > djmax_maxCombo)
 		djmax_maxCombo = djmax_combo;
 
-	// Update accuracy tracking
 	djmax_weightedSum = djmax_weightedSum + weight;
 	djmax_totalNotes = djmax_totalNotes + 1;
 
@@ -243,20 +247,19 @@ function processHit(offsetMs:Float) {
 		+ djmax_getScore());
 }
 
-/**
- * Processes a BREAK (complete miss). Resets combo and adds 0 to accuracy.
- */
-function processMiss() {
-	djmax_combo = 0;
-	djmax_totalNotes = djmax_totalNotes + 1;
-	// weightedSum += 0 (miss weight is 0)
-
-	debug('BREAK! | Combo: 0 | Score: ' + djmax_getScore());
-}
-
 // ========================================
 // HELPER FUNCTIONS
 // ========================================
+
+/**
+ * Overrides Conductor.safeZoneOffset to match DJMAX's bad window.
+ * Uses djmax_badWindow * playbackRate.
+ */
+function djmax_applySafeZone() {
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	Conductor.safeZoneOffset = djmax_badWindow * playbackRate;
+	debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (badWindow=' + djmax_badWindow + 'ms)');
+}
 
 /**
  * Enables or disables the DJMAX scoring system
@@ -448,6 +451,22 @@ function djmax_getKadeEngineStyle():Bool {
 	return djmax_kadeEngineStyle;
 }
 
+function processMiss() {
+	djmax_combo = 0;
+	djmax_totalNotes = djmax_totalNotes + 1;
+}
+
+function processNote(note:Note) {
+	var noteDiff = note.strumTime - Conductor.songPosition;
+	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
+	var offsetMs = Math.abs(noteDiff / playbackRate);
+
+	processHit(offsetMs);
+
+	if (djmax_replaceScoreText)
+		djmax_updateScoreText();
+}
+
 // ========================================
 // SCORE TEXT
 // ========================================
@@ -462,36 +481,25 @@ function djmax_updateScoreText() {
 
 	var score = djmax_getScore();
 	var misses = game.songMisses;
-	var hasHitNotes = (djmax_totalNotes > 0);
+	var prefix = djmax_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses : 'Score: ' + score + ' | Misses: ' + misses;
 
-	var scoreText = '';
-
-	if (hasHitNotes) {
-		var accuracy = djmax_getAccuracy();
-		var formattedPercent = djmax_formatPercent(accuracy);
-		var grade = djmax_getGrade(accuracy);
-		var ratingFC = djmax_getRatingFC();
-
-		scoreText = djmax_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ' + formattedPercent + ' % | (' + ratingFC
-			+ ') ' + grade : 'Score: '
-			+ score
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: '
-			+ grade
-			+ ' ('
-			+ formattedPercent
-			+ '%) - '
-			+ ratingFC;
-	} else {
-		scoreText = djmax_kadeEngineStyle ? 'Score: ' + score + ' | Combo Breaks: ' + misses + ' | Accuracy: ?' : 'Score: '
-			+ score
-			+ ' | Misses: '
-			+ misses
-			+ ' | Rating: ?';
+	if (djmax_totalNotes <= 0) {
+		game.scoreTxt.text = prefix + (djmax_kadeEngineStyle ? ' | Accuracy: ?' : ' | Rating: ?');
+		return;
 	}
 
-	game.scoreTxt.text = scoreText;
+	var accuracy = djmax_getAccuracy();
+	var percent = djmax_formatPercent(accuracy);
+	var grade = djmax_getGrade(accuracy);
+	var fc = djmax_getRatingFC();
+
+	game.scoreTxt.text = djmax_kadeEngineStyle ? prefix + ' | Accuracy: ' + percent + ' % | (' + fc + ') ' + grade : prefix
+		+ ' | Rating: '
+		+ grade
+		+ ' ('
+		+ percent
+		+ '%) - '
+		+ fc;
 }
 
 // ========================================
@@ -548,11 +556,8 @@ function onCreatePost() {
 	djmax_resetScoring();
 	debug('DJMAX scoring ready');
 
-	if (djmax_isActiveSystem) {
-		var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-		Conductor.safeZoneOffset = djmax_badWindow * playbackRate;
-		debug('Overrode safeZoneOffset to ' + Conductor.safeZoneOffset + 'ms (badWindow=' + djmax_badWindow + 'ms)');
-	}
+	if (djmax_isActiveSystem)
+		djmax_applySafeZone();
 }
 
 function preUpdateScore(miss:Bool) {
@@ -570,37 +575,22 @@ function onUpdateScore(miss:Bool) {
 }
 
 function goodNoteHit(note:Note) {
-	if (note.isSustainNote || !note.mustPress)
-		return;
-	if (!djmax_enabled)
+	if (note.isSustainNote || !note.mustPress || !djmax_enabled)
 		return;
 
-	// Calculate timing offset
-	var noteDiff = note.strumTime - Conductor.songPosition;
-	var playbackRate = game.playbackRate != null ? game.playbackRate : 1.0;
-	noteDiff = noteDiff / playbackRate;
-	var offsetMs = Math.abs(noteDiff);
-
-	// Process the hit
-	processHit(offsetMs);
-
-	if (djmax_replaceScoreText)
-		djmax_updateScoreText();
+	processNote(note);
 }
 
 function noteMiss(note:Note) {
-	if (note.isSustainNote || !note.mustPress)
-		return;
-	if (!djmax_enabled)
+	if (note.isSustainNote || !note.mustPress || !djmax_enabled)
 		return;
 
-	// Process the BREAK
 	processMiss();
+
+	debug('BREAK! | Combo: 0 | Score: ' + djmax_getScore());
 
 	if (djmax_replaceScoreText)
 		djmax_updateScoreText();
 }
 
-function onDestroy() {
-	// Cleanup handled by other scripts
-}
+function onDestroy() {}
