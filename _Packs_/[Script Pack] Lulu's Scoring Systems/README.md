@@ -2,45 +2,332 @@
 
 A collection of **10 rhythm game scoring/accuracy systems** for Friday Night Funkin' Psych Engine 1.0.4 as HScript. Each system attempts to faithfully recreate the timing windows, accuracy formulas, scoring algorithms, and grade thresholds from its respective game.
 
-Switch between them at any time via the mod settings menu. 
+Switch between them at any time via the mod settings menu.
 
 *Note that there are improvements that can be made and will be made in the future.*
 
-This readme serves as an overview over the differences between the various systems.
+---
 
-Also includes:
-- All math formulas are available so anyone can inspect or port to other engines if desired.
-- API for the scoring systems to integrate with custom uis and such.
+## How It Works
 
+### File Structure
 
+```
+mods/[Script Pack] Lulu's Scoring Systems/
+├── pack.json                               Mod pack metadata
+├── data/
+│   └── settings.json                       Mod Settings definitions
+├── scripts/
+│   ├── Loader.hx                           Entry point — loads only what's needed
+│   ├── scoring/                            One HScript per scoring system
+│   │   ├── Wife3 Scoring System.hx
+│   │   ├── OsuMania Scoring System.hx
+│   │   ├── OsuManiaV2 Scoring System.hx
+│   │   ├── ITG Scoring System.hx
+│   │   ├── Ruthless Scoring System.hx
+│   │   ├── O2Jam Scoring System.hx
+│   │   ├── DJMAX Scoring System.hx
+│   │   ├── IIDX Scoring System.hx
+│   │   └── Quaver Scoring System.hx
+│   └── extras/                             Optional feature scripts
+│       ├── Timing Display.hx               Color-coded ms timing feedback
+│       ├── Score Comparison.hx             All 10 systems side by side
+│       ├── Rating Popups.hx                Custom judgement popup sprites
+│       ├── Hit Error Bar.hx                Horizontal timing error bar
+│       └── Judgement Counter.lua           Real-time judgement tally
+├── images/
+│   └── ratings/                            Optional custom rating popup images
+└── docs/                                   Detailed per-system documentation
+```
 
+### The Loader
+
+`Loader.hx` is the only script in the global `scripts/` folder — it's the entry point that runs every song. Instead of loading all 10 scoring systems at once, it reads your **Mod Settings** and initializes only:
+
+- The **active scoring system** you've selected
+- Any **extra features** you've enabled (timing display, rating popups, hit error bar, judgement counter)
+- **Score Comparison** mode (loads all systems only when this is turned on)
+
+This keeps overhead minimal — if you're using Wife3 with timing display, only those two scripts run.
+
+### Documentation
+
+This readme is a quick reference. Each scoring system has its own detailed doc file in [`docs/`](docs/) with full math formulas, worked examples, and comparisons with the original games. The API for integrating scoring systems with custom UIs is in the [For Developers](#for-developers) section.
 
 ---
 
 ## Table of Contents
-
-- [Quick Comparison](#quick-comparison)
-- [Scoring Systems](#scoring-systems)
-  - [Psych Engine (Default)](#1-psych-engine-default)
-  - [Wife3 (Etterna)](#2-wife3-etterna)
-  - [osu!mania ScoreV1](#3-osumania-scorev1)
-  - [osu!mania ScoreV2](#4-osumania-scorev2)
-  - [ITG (In The Groove)](#5-itg-in-the-groove)
-  - [Ruthless](#6-ruthless)
-  - [O2Jam](#7-o2jam)
-  - [DJMAX RESPECT V](#8-djmax-respect-v)
-  - [beatmania IIDX](#9-beatmania-iidx)
-  - [Quaver](#10-quaver)
-- [Timing Window Comparison](#timing-window-comparison)
-- [Grade Threshold Comparison](#grade-threshold-comparison)
+- [How It Works](#how-it-works)
 - [Supporting Features](#supporting-features)
+  - [Rating Popups](#rating-popups)
+  - [Hit Error Bar](#hit-error-bar)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Systems Quick Comparison](#systems-quick-comparison)
+- [Timing Window Comparison](#timing-window-comparison)
+- [Grade Threshold Comparison](#grade-threshold-comparison)
 - [For Developers](#for-developers)
 
 ---
 
-## Quick Comparison
+## Supporting Features
+
+These scripts work alongside all scoring systems:
+
+### Timing Display
+Color-coded timing feedback (e.g. "+12.5ms") that appears on-screen after each note hit. Colors match the active scoring system's judgement tiers.
+
+### Score Comparison
+Shows **all 10 scoring systems side by side** during gameplay — score, accuracy, grade, and FC tier for each. Useful for comparing how different systems evaluate the same performance.
+
+### Rating Popups
+
+Replaces Psych Engine's default rating images (sick/good/bad/shit) with custom sprites matching the active scoring system's judgement names. When enabled, the engine's built-in rating sprite is hidden and custom popups are spawned instead.
+
+#### How It Works
+
+Each time a note is hit, the script determines the judgement from the active scoring system and looks for a matching image. The lookup priority is:
+
+1. **Individual image** — `images/ratings/[system]/[judgement].png`
+2. **Spritesheet animation** — `images/ratings/[system]/spritesheet.png` + `.xml`, matching the animation prefix to the judgement name
+3. **Skip** — if neither exists for that judgement, no popup appears (the default Psych popup is already hidden)
+
+Individual images always override spritesheet entries for the same judgement. For example, if both `flawless.png` and a `flawless` animation exist in the spritesheet, the individual image is used.
+
+#### System Folder Names & Judgement Names
+
+Each system's images go in a folder matching its internal name (case-sensitive as listed):
+
+| System | Folder | Judgement image/prefix names |
+|--------|--------|------------------------------|
+| Wife3 | `Wife3/` | marvelous, perfect, great, good, bad, miss |
+| osu!mania V1 | `OsuMania/` | max, threehundred, twohundred, hundred, fifty, miss |
+| osu!mania V2 | `osumaniav2/` | max, threehundred, twohundred, hundred, fifty, miss |
+| ITG | `ITG/` | fantastic, excellent, great, decent, wayoff, miss |
+| Ruthless | `ruthless/` | flawless, precise, great, good, ok, sloppy, barely, miss |
+| O2Jam | `O2Jam/` | cool, good, bad, miss |
+| DJMAX | `djmax/` | maxhundred, maxninety, good, bad, miss |
+| IIDX | `IIDX/` | pgreat, great, good, bad, miss |
+| Quaver | `quaver/` | marvelous, perfect, great, good, okay, miss |
+
+> **Numeric name mapping:** osu!mania's numeric judgements and DJMAX's `max100`/`max90` are automatically mapped to spelled-out asset names to avoid conflicts with Sparrow XML's frame-numbering convention. Use `threehundred` not `300`, `maxhundred` not `max100`, etc.
+
+#### Individual Images
+
+Place PNG files directly in the system's ratings folder:
+
+```
+images/ratings/ruthless/
+├── flawless.png
+├── precise.png
+├── great.png
+├── good.png
+├── ok.png
+├── sloppy.png
+├── barely.png
+└── miss.png
+```
+
+You don't need to provide every judgement — missing ones are simply skipped.
+
+#### Spritesheets (Animated Popups)
+
+Place a Sparrow atlas (`spritesheet.png` + `spritesheet.xml`) in the system's ratings folder. Animation prefixes in the XML must match the judgement names listed above.
+
+```
+images/ratings/ruthless/
+├── spritesheet.png
+├── spritesheet.xml
+└── theme.json          (optional)
+```
+
+Spritesheet popups are auto-centered using `centerOffsets()` so frames with different dimensions stay aligned. The animation framerate defaults to 60fps but is configurable via `theme.json` or Mod Settings.
+
+#### theme.json
+
+An optional `theme.json` in the system's ratings folder lets you configure popup behavior per system. These values are used when **Use Theme Defaults** is enabled in Mod Settings:
+
+```json
+{
+    "antialiasing": true,
+    "scale": 0.75,
+    "framerate": 60,
+    "tweenDuration": 0.1,
+    "velocityX": 0,
+    "velocityY": -75,
+    "accelerationX": 0,
+    "accelerationY": 550,
+    "offsets": {
+        "max": [50, 0],
+        "threehundred": [50, 0],
+        "twohundred": [50, 0],
+        "hundred": [50, 0],
+        "fifty": [50, 0],
+        "miss": [50, 0]
+    }
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `antialiasing` | bool | true | Sprite antialiasing for this system's popups |
+| `scale` | float | 1.0 | Scale multiplier for popup sprites |
+| `framerate` | int | 60 | Animation framerate for spritesheet popups |
+| `tweenDuration` | float | 0.1 | Fade-out tween duration in seconds |
+| `velocityX` | float | 0 | Horizontal velocity (pixels/sec) |
+| `velocityY` | float | −75 | Vertical velocity (negative = upward) |
+| `accelerationX` | float | 0 | Horizontal acceleration |
+| `accelerationY` | float | 550 | Vertical acceleration (positive = downward gravity) |
+| `offsets` | object | — | Per-judgement `[x, y]` position adjustments. Keys use asset names (e.g. `threehundred`, not `300`) |
+
+All of these (except `offsets`) can also be overridden globally via Mod Settings, which take effect when **Use Theme Defaults** is off.
+
+#### osu!mania Hold Note Behavior
+
+For osu!mania and OsuManiaV2, hold note **heads** do not show rating popups — only the last **tail** release shows a popup. This matches the official osu!mania behavior where the hold result is displayed at the end of the sustain.
+
+### Hit Error Bar
+
+A horizontal bar at the bottom of the screen that visualizes your timing accuracy in real time, similar to osu!'s hit error meter. Each note hit places a colored marker on the bar — left of center for early hits, right of center for late hits.
+
+The bar is built from the active scoring system's timing windows. Each window tier is drawn as a color-coded segment mirrored on both sides of the center line, so you can see at a glance which judgement tier your hits are landing in. Window boundary labels (showing the ms value at each tier edge) appear briefly at the start of the song, then fade out.
+
+#### Visual Layout
+
+```
+  Early                              Late
+   ◄──────────────┼──────────────►
+   ║  bad  │ good │ great │ good │  bad  ║
+                  ▲
+            center (0ms)
+```
+
+- **Center line** — a white marker at 0ms (perfect timing)
+- **Color segments** — each judgement tier is a colored band, mirrored on both sides
+- **Hit markers** — vertical lines placed at the corresponding offset, colored by judgement tier
+- **"Early" / "Late" labels** — shown at the edges, fade out after 1 second
+- **Window labels** — ms values at each tier boundary, staggered vertically to avoid overlap, fade out after 1 second
+
+The bar replaces Psych Engine's time bar when enabled. The song time text is moved to the bottom-left corner of the screen.
+
+#### Hit Markers
+
+Each note hit spawns a marker from a pre-allocated pool of 100. Markers fade in quickly (0.1s) then slowly fade out (3s). When old markers are recycled, their tweens are cancelled and they're repositioned for the new hit. Sustain notes (hold tails) are excluded — only regular note heads produce markers.
+
+#### Positioning
+
+The bar automatically centers itself horizontally across the player's 4 strum columns. It sits at the bottom of the screen (`FlxG.height - 30`). This works correctly with both normal and middlescroll.
+
+#### Simple Colors Mode
+
+When **Simple Colors** is enabled in Mod Settings, the bar collapses all judgement tiers down to 3 colors regardless of the scoring system:
+- **Cyan** — tightest window (best judgement)
+- **Lime** — middle window
+- **Orange** — widest window
+
+This gives a consistent osu!-style 3-color look across all systems.
+
+#### Mod Settings
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Show Hit Error Bar | Enable/disable the bar | Off |
+| Hit Error Bar Width | Bar width in pixels (100–800) | 400 |
+| Hit Error Bar BG Opacity | Background opacity (0%–100%, 5% steps) | 25% |
+| Hit Error Bar Simple Colors | Collapse to 3-color mode | Off |
+
+#### Developer API
+
+The script exposes two functions via `setVar()` for use by other scripts:
+
+| Function | Description |
+|----------|-------------|
+| `heb_addHit(offsetMs)` | Manually add a hit marker at the given timing offset |
+| `heb_clearHitData()` | Clear all markers and reset the timing average |
+
+### Judgement Counter
+Displays a real-time breakdown of judgement counts during gameplay. Automatically uses labels and colors from the active scoring system. For osu!mania and OsuManiaV2, the counter reads tallies directly from the scoring system (including tail judgements) rather than classifying hits independently.
+
+---
+
+## Installation
+
+1. Download the script pack from the releases page:
+2. Place it in your `mods/` directory:
+   ```
+   mods/[Script Pack] Lulu's Scoring Systems/
+   ├── pack.json
+   ├── data/
+   │   └── settings.json
+   ├── scripts/
+   │   ├── Loader.hx                    (auto-loads only needed scripts)
+   │   ├── scoring/
+   │   │   ├── Wife3 Scoring System.hx
+   │   │   ├── OsuMania Scoring System.hx
+   │   │   ├── OsuManiaV2 Scoring System.hx
+   │   │   ├── ITG Scoring System.hx
+   │   │   ├── Ruthless Scoring System.hx
+   │   │   ├── O2Jam Scoring System.hx
+   │   │   ├── DJMAX Scoring System.hx
+   │   │   ├── IIDX Scoring System.hx
+   │   │   └── Quaver Scoring System.hx
+   │   └── extras/
+   │       ├── Timing Display.hx
+   │       ├── Score Comparison.hx
+   │       ├── Rating Popups.hx
+   │       ├── Hit Error Bar.hx
+   │       └── Judgement Counter.lua
+   └── images/
+       └── ratings/          (optional custom rating popup images)
+   ```
+3. Enable the script pack in the Psych Engine mod menu
+4. Configure your preferred scoring system in **Mod Settings**
+
+---
+
+## Configuration
+
+All settings are configurable through Psych Engine's **Mod Settings** menu. No code editing required.
+
+### General Settings (All Systems)
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Scoring System | Select active system | Psych |
+| Enable Scoring Debug Output | Print debug info | Off |
+| Replace Score Text | Override default HUD text | On |
+| Show Timing Display | Show ms timing feedback | On |
+| Show Judgement Counter | Show real-time judgement tally | On |
+| Show Score Comparison | Show all systems side by side | Off |
+| Use Kade Engine Style | Alternative score text format | Off |
+| Show Hit Error Bar | Show horizontal timing error bar | Off |
+| Hit Error Bar Width | Bar width in pixels (100–800) | 400 |
+| Hit Error Bar BG Opacity | Background opacity (0%–100%) | 25% |
+| Hit Error Bar Simple Colors | Collapse to 3-color mode | Off |
+| Custom Rating Popups | Use system-specific rating images | Off |
+| Use Theme Defaults | Read scale/antialiasing from theme.json | Off |
+| Rating Popup Scale | Scale multiplier for popup sprites | 1.0 |
+| Rating Popup Antialiasing | Antialiasing mode (ClientPrefs / On / Off) | ClientPrefs |
+| Rating Popup Framerate | Animation framerate for spritesheets | 60 |
+| Rating Popup Fade Duration | Fade-out tween duration (seconds) | 0.1 |
+| Rating Popup Velocity X | Horizontal velocity of popup sprites | 0.0 |
+| Rating Popup Velocity Y | Vertical velocity of popup sprites | −70.0 |
+
+### Per-System Settings
+
+| System | Setting | Description |
+|--------|---------|-------------|
+| Wife3 | Judge Preset (1–9) | Timing strictness preset |
+| Wife3 | Judge Scale (0.009–4.0) | Custom timing scale (overrides preset) |
+| osu!mania V1/V2 | Overall Difficulty (0–10) | Timing window strictness |
+| ITG | Window Scale (0.1–4.0) | Timing window multiplier |
+| Ruthless | Perfect Window (0–15ms) | Flawless timing threshold |
+| O2Jam | BPM-Based Windows | Authentic BPM-scaling toggle |
+| Quaver | Judgement Difficulty | Preset: Peaceful → Impossible |
+
+---
+
+## Systems Quick Comparison
 
 > **Authentic Score / Authentic Accuracy** — indicates whether the score or accuracy formula faithfully recreates the original game's algorithm. "Yes" means the formula is directly ported from the source game. "No" means the source game either does not have that formula at all (e.g. Etterna tracks accuracy only — it has no score formula, so one was custom-built for this pack) or the formula was otherwise replaced with a custom implementation. "—" means the system is entirely custom with no source game to compare against.
 >
@@ -59,958 +346,8 @@ Also includes:
 | **IIDX** | beatmania IIDX | EX Score | EX Rate | No | No | Yes | No | No |
 | **Quaver** | Quaver | 1,000,000 | Weighted average | 8 Difficulty Presets | No | Yes | Yes | No |
 
----
-
-## Scoring Systems
-
-### 1. Psych Engine (Default)
-
-The built-in scoring system. No custom script — uses the engine's native hit detection and rating system (Sick / Good / Bad / Shit).
-
----
-
-### 2. Wife3 (Etterna)
-
-The accuracy system used by **Etterna** (StepMania community fork), widely regarded as one of the most mathematically rigorous rhythm game accuracy systems.
-
-#### Timing Windows
-
-Windows scale with the **Judge preset** (J1–J9) or a custom **Judge Scale** value:
-
-| Judgement | Base Window | Formula |
-|-----------|-------------|---------|
-| Marvelous | ±22ms | `22 × scale` |
-| Perfect | ±45ms | `45 × scale` |
-| Great | ±90ms | `90 × scale` |
-| Good | ±135ms | `135 × scale` |
-| Bad | ±180ms | `180 × scale` |
-
-| Preset | Scale | Marvelous Window |
-|--------|-------|------------------|
-| J1 | 4.0 | ±88ms (easiest) |
-| J4 | 1.0 | ±22ms (default) |
-| J9 | 0.4 | ±8.8ms (hardest) |
-
-#### Accuracy Formula
-
-Wife3 uses an **error function (erf)** curve — accuracy points are continuous, not discrete tiers:
-
-$$
-\begin{aligned}
-&s = \text{Judge Scale} \quad\quad \text{ridic} = 5s \quad\quad \text{max\\_boo} = 180s \\
-&\text{zero} = 65 \cdot s^{0.75} \quad\quad \text{dev} = 22.7 \cdot s^{0.75} \\
-&\text{points}(t) = \begin{cases}
-+2.0 & |t| \leq \text{ridic} \\
-+2.0 \times \text{erf}\!\left(\dfrac{\text{zero} - |t|}{\text{dev}}\right) & |t| \leq \text{zero} \\
-\dfrac{(|t| - \text{zero}) \times (-5.5)}{\text{max\\_boo} - \text{zero}} & |t| \leq \text{max\\_boo} \\
--5.5 & |t| > \text{max\\_boo}
-\end{cases} \\
-&\text{Wife3 \%} = \frac{\displaystyle\sum_{i=1}^{N} \text{points}_i}{N \times 2.0} \times 100
-\end{aligned}
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-Constants:
-  ridic     = 5.0 × scale
-  max_boo   = 180.0 × scale
-  ts_pow    = 0.75
-  zero      = 65.0 × scale^ts_pow
-  dev       = 22.7 × scale^ts_pow
-  max_points = 2.0
-  miss_weight = -5.5
-
-For a hit with |offset| ms:
-  if offset ≤ ridic:      points = +2.0
-  if offset ≤ zero:       points = +2.0 × erf((zero - offset) / dev)
-  if offset ≤ max_boo:    points = (offset - zero) × miss_weight / (max_boo - zero)
-  if offset > max_boo:    points = -5.5
-
-Wife3 % = (Σ points / (total_notes × 2.0)) × 100
-```
-
-</details>
-
-#### Score Formula
-
-$$
-\text{ratio} = \frac{\text{accuracy\\_points}}{2.0}
-$$
-
-$$
-\text{score} \mathrel{+}= \begin{cases}
-\text{ratio} \times 350 & \text{if ratio} \geq 0 \\
-\text{ratio} \times 200 & \text{if ratio} < 0
-\end{cases}
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-wife3_ratio = accuracy_points / 2.0
-if wife3_ratio ≥ 0:  score += wife3_ratio × 350
-if wife3_ratio < 0:  score += wife3_ratio × 200
-```
-
-</details>
-
-#### Grade Thresholds
-
-| Grade | Threshold |
-|-------|-----------|
-| AAAAA | ≥ 99.70% |
-| AAAA | ≥ 99.50% |
-| AAA | ≥ 99.00% |
-| AA | ≥ 98.00% |
-| A | ≥ 96.50% |
-| B | ≥ 93.00% |
-| C | ≥ 90.00% |
-| D | ≥ 80.00% |
-| F | < 80.00% |
-
-#### FC Tiers
-
-| Tier | Criteria |
-|------|----------|
-| MFC | All Marvelous, no misses |
-| PFC / SFC | Marvelous + Perfect only, no misses (name depends on Etterna FC Tier setting) |
-| GFC | Up to Great, no misses |
-| FC | No misses |
-| SDCB | < 10 misses |
-| Clear | ≥ 10 misses |
-
-#### Combo Behavior
-
-All judgements (Marvelous through Bad) **maintain combo**. Only misses break combo.
-
-#### Settings
-
-| Setting | Range | Default |
-|---------|-------|---------|
-| Judge Preset | 1–9 | 4 |
-| Judge Scale | 0.009–4.0 | 1.0 |
-| Use Etterna FC Tier Names | on/off | off |
-
----
-
-### 3. osu!mania ScoreV1
-
-The classic **osu!mania** scoring system with base + bonus score components and OD-based timing windows.
-
-#### Timing Windows
-
-Windows depend on **Overall Difficulty (OD)** (0–10):
-
-| Judgement | Formula | OD 0 | OD 5 | OD 8 | OD 10 |
-|-----------|---------|------|------|------|-------|
-| MAX (Rainbow 300) | ±16ms (fixed) | ±16ms | ±16ms | ±16ms | ±16ms |
-| 300 | ±(64 − 3 × OD) | ±64ms | ±49ms | ±40ms | ±34ms |
-| 200 | ±(97 − 3 × OD) | ±97ms | ±82ms | ±73ms | ±67ms |
-| 100 | ±(127 − 3 × OD) | ±127ms | ±112ms | ±103ms | ±97ms |
-| 50 | ±(151 − 3 × OD) | ±151ms | ±136ms | ±127ms | ±121ms |
-
-**Tail windows** (hold note releases): 1.5× the above values (more lenient).
-
-#### Score Formula
-
-$$
-\text{Score} = \underbrace{\frac{500{,}000 \times M}{N} \times \frac{H_v}{320}}_{\text{BaseScore}} + \underbrace{\frac{500{,}000 \times M}{N} \times \frac{H_b \times \sqrt{B}}{320}}_{\text{BonusScore}} \quad (\max\ 1{,}000{,}000)
-$$
-
-$$
-B_{\text{new}} = \text{clamp}\!\left(B + H_b - \frac{H_p}{M_d},\ 0,\ 100\right) \quad\quad B_{\text{miss}} = 0
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-Score = BaseScore + BonusScore    (max 1,000,000)
-
-BaseScore  = (500,000 × ModMult / TotalNotes) × (HitValue / 320)
-BonusScore = (500,000 × ModMult / TotalNotes) × (HitBonus × √Bonus / 320)
-
-Bonus accumulator (0–100):
-  On hit:  Bonus = clamp(Bonus + HitBonus − HitPunishment / ModDivider, 0, 100)
-  On miss: Bonus = 0
-```
-
-</details>
-
-| Judgement | HitValue | HitBonus | HitPunishment |
-|-----------|----------|----------|---------------|
-| MAX | 320 | 32 | 0 |
-| 300 | 300 | 32 | 0 |
-| 200 | 200 | 16 | 8 |
-| 100 | 100 | 8 | 24 |
-| 50 | 50 | 4 | 44 |
-| Miss | 0 | 0 | ∞ (reset to 0) |
-
-**Playback Rate Modifiers:**
-
-| Rate | ModMultiplier | ModDivider |
-|------|---------------|------------|
-| ≤ 0.75× | 0.5 | 1.0 |
-| 0.75–1.0× | 0.5–1.0 (lerp) | 1.0 |
-| 1.0× | 1.0 | 1.0 |
-| 1.0–1.5× | 1.0 | 1.0–1.1 (lerp) |
-| ≥ 1.5× | 1.0 | 1.1 |
-
-#### Accuracy Formula
-
-$$
-\text{Accuracy \%} = \frac{(N_{\text{MAX}} + N_{300}) \times 300 + N_{200} \times 200 + N_{100} \times 100 + N_{50} \times 50}{N_{\text{total}} \times 300} \times 100
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-                (CountMAX + Count300) × 300 + Count200 × 200 + Count100 × 100 + Count50 × 50
-Accuracy % =  ──────────────────────────────────────────────────────────────────────────────── × 100
-                                          TotalNotes × 300
-```
-
-</details>
-
-#### Grade Thresholds
-
-| Grade | Threshold |
-|-------|-----------|
-| SS | 100% |
-| S | > 95% |
-| A | > 90% |
-| B | > 80% |
-| C | > 70% |
-| D | < 70% |
-
-#### FC Tiers
-
-| Tier | Criteria |
-|------|----------|
-| PFC | All MAX hits, no misses |
-| FC | No misses |
-| SDCB | < 10 misses |
-| Clear | ≥ 10 misses |
-
-#### Combo Behavior
-
-All judgements (MAX through 50) **maintain combo**. Only misses break combo.
-
-#### Special Mechanics
-
-- **Tail judgements**: Hold note releases are scored separately with 1.5× lenient windows
-- **Broken holds**: Early release caps the tail to a minimum of 50
-- **Bonus accumulator**: √Bonus multiplier rewards consistency (resets on miss)
-- **Playback rate**: Full ModMultiplier / ModDivider support
-
-#### Settings
-
-| Setting | Range | Default |
-|---------|-------|---------|
-| Overall Difficulty (OD) | 0.0–10.0 | 8.0 |
-
----
-
-### 4. osu!mania ScoreV2
-
-The **combo-weighted** osu!mania scoring variant used in tournaments. Shares timing windows with V1 but uses a fundamentally different score formula that heavily rewards combo.
-
-#### Timing Windows
-
-Same as [osu!mania ScoreV1](#3-osumania-scorev1) (shared OD setting).
-
-#### Score Formula
-
-$$
-\text{Score} = 700{,}000 \times \frac{C_{\max}}{C_{\text{total}}} + 300{,}000 \times A^{10}
-$$
-
-Where $C_{\max}$ = highest combo achieved, $C_{\text{total}}$ = total objects (taps + LN starts + LN releases), $A$ = osu!mania accuracy as a decimal (0–1).
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-Score = 700,000 × ComboRatio + 300,000 × Accuracy¹⁰
-
-ComboRatio = MaxComboAchieved / MaxCombo
-Accuracy   = standard osu!mania accuracy (decimal 0–1)
-MaxCombo   = total objects (taps + LN starts + LN releases)
-```
-
-</details>
-
-> **Note:** The $A^{10}$ term means accuracy is raised to the 10th power. This creates an extreme exponential punishment — at 95% accuracy, the accuracy component is only ~0.5987 × 300,000 ≈ 179,600. At 90% accuracy, it drops to ~0.3487 × 300,000 ≈ 104,600.
-
-#### Accuracy Formula
-
-Same as [osu!mania ScoreV1](#3-osumania-scorev1).
-
-#### Grades, FC Tiers, Combo Behavior
-
-Same as [osu!mania ScoreV1](#3-osumania-scorev1).
-
-#### Special Mechanics
-
-- **Objects vs Notes**: Hold notes count as 2 objects (press + release), both judged separately
-- **70/30 split**: 70% of score from max combo achieved, 30% from accuracy
-- **Exponential accuracy**: Accuracy^10 creates massive punishment for anything below ~98%
-
-#### Settings
-
-Same as V1 (shared OD).
-
----
-
-### 5. ITG (In The Groove)
-
-The **DDR MAX2-style** scoring system used by StepMania and In The Groove, with dance point accuracy tracking.
-
-#### Timing Windows
-
-Windows scale with **Window Scale** multiplier:
-
-| Judgement | Base Window | Formula |
-|-----------|-------------|---------|
-| Fantastic | ±21.5ms | `21.5 × scale` |
-| Excellent | ±43ms | `43 × scale` |
-| Great | ±102ms | `102 × scale` |
-| Decent | ±135ms | `135 × scale` |
-| Way Off | ±180ms | `180 × scale` |
-
-#### Score Formula
-
-DDR MAX2-style weighted accumulation:
-
-$$
-\text{Score} = \frac{\displaystyle\sum_{i=1}^{N} w_i \times i}{\dfrac{10 \times N \times (N+1)}{2}} \times 10{,}000{,}000
-$$
-
-Where $w_i$ = judgement weight for note $i$, and $i$ = step counter (increments on every note including misses).
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-Step Counter increments on every note (including misses)
-
-On each note:
-  EarnedPoints += judgement_weight × step_counter
-
-MaxPossiblePoints = 10 × N × (N + 1) / 2    (where N = total scoring events)
-Score = (EarnedPoints / MaxPossiblePoints) × 10,000,000
-```
-
-</details>
-
-| Judgement | Weight | Dance Points |
-|-----------|--------|-------------|
-| Fantastic | 10 | +5 |
-| Excellent | 9 | +4 |
-| Great | 5 | +2 |
-| Decent | 0 | 0 |
-| Way Off | 0 | −6 |
-| Miss | 0 | −12 |
-| Hold OK | 10 | +5 |
-| Hold NG | 0 | 0 |
-
-#### Accuracy Formula (Dance Points)
-
-$$
-\text{DP Accuracy \%} = \frac{\text{EarnedDP}}{\text{MaxDP}} \times 100 \quad\quad \text{MaxDP} = 5 \times N
-$$
-
-Where $N$ = total scoring events (taps + holds).
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-                    EarnedDP
-DP Accuracy % =  ────────── × 100
-                    MaxDP
-
-MaxDP = 5 × total scoring events (taps + holds)
-```
-
-</details>
-
-#### Grade Thresholds
-
-| Grade | DP % | | Grade | DP % |
-|-------|------|-|-------|------|
-| ★★★★ | 100% | | A− | ≥ 80% |
-| ★★★ | ≥ 99% | | B+ | ≥ 76% |
-| ★★ | ≥ 98% | | B | ≥ 72% |
-| ★ | ≥ 96% | | B− | ≥ 68% |
-| S+ | ≥ 94% | | C+ | ≥ 64% |
-| S | ≥ 92% | | C | ≥ 60% |
-| S− | ≥ 89% | | C− | ≥ 55% |
-| A+ | ≥ 86% | | D | < 55% |
-| A | ≥ 83% | | | |
-
-#### FC Tiers
-
-| Tier | Criteria |
-|------|----------|
-| FFC | All Fantastic, no misses |
-| FEC | Fantastic + Excellent only, no misses |
-| FGC | Up to Great, no misses |
-| FC | No misses |
-| SDCB | < 10 misses |
-| Clear | ≥ 10 misses |
-
-#### Combo Behavior
-
-All non-miss judgements **maintain combo** (including Decent and Way Off). Only misses break combo.
-
-#### Settings
-
-| Setting | Range | Default |
-|---------|-------|---------|
-| Window Scale | 0.1–4.0 | 1.0 |
-
----
-
-### 6. Lulu's Ruthless
-
-A **custom scoring system**, using a linear curve. Accuracy is always 0–100% (never negative). Features 7 judgement tiers and a configurable perfect window.
-
-#### Timing Windows
-
-| Judgement | Window |
-|-----------|--------|
-| Flawless | ≤ perfect window (default 10ms) |
-| Precise | ≤ 20ms |
-| Great | ≤ 30ms |
-| Good | ≤ 40ms |
-| Ok | ≤ 50ms |
-| Sloppy | ≤ 75ms |
-| Barely | ≤ 100ms |
-| Miss | > 100ms |
-
-#### Score Formula
-
-Same base + bonus structure as osu!mania V1:
-
-$$
-\text{Score} = \underbrace{\frac{500{,}000}{N} \times \frac{H_v}{320}}_{\text{BaseScore}} + \underbrace{\frac{500{,}000}{N} \times \frac{B_v \times \sqrt{B}}{320}}_{\text{BonusScore}} \quad (\max\ 1{,}000{,}000)
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-BaseScore  = (500,000 / TotalNotes) × (HitValue / 320)
-BonusScore = (500,000 / TotalNotes) × (BonusValue × √Bonus / 320)
-
-Score = BaseScore + BonusScore    (max 1,000,000)
-```
-
-</details>
-
-| Judgement | HitValue | BonusValue | HitBonus | HitPunishment |
-|-----------|----------|------------|----------|---------------|
-| Flawless | 320 | 32 | +2.0 | 0 |
-| Precise | 310 | 24 | +1.0 | 0 |
-| Great | 300 | 16 | 0 | 0 |
-| Good | 250 | 12 | 0 | −4 |
-| Ok | 200 | 8 | 0 | −8 |
-| Sloppy | 100 | 4 | 0 | −24 |
-| Barely | 50 | 2 | 0 | −44 |
-| Miss | 0 | 0 | 0 | reset to 0 |
-
-#### Accuracy Formula
-
-Linear falloff with doubled punishment rate past 50ms:
-
-$$
-\text{points}(t) = \begin{cases}
-1.0 & |t| \leq p \\
-0.0 & |t| \geq 100 \\
-1 - \dfrac{(50 + (|t| - 50) \times 2) - p}{100 - p} & |t| > 50 \\
-1 - \dfrac{|t| - p}{100 - p} & \text{otherwise}
-\end{cases}
-$$
-
-$$
-\text{Accuracy \%} = \frac{\displaystyle\sum_{i=1}^{N} \text{points}_i}{N} \times 100 \quad\quad (0\text{–}100\%,\ \text{never negative})
-$$
-
-Where $p$ = perfect window (default 10ms).
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-if |offset| ≤ perfect_window:  accuracy_points = 1.0 (100%)
-if |offset| ≥ 100ms:           accuracy_points = 0.0 (0%)
-
-Otherwise:
-  if |offset| > 50ms:
-    adjusted = 50 + (|offset| − 50) × 2
-    linear = 1.0 − (adjusted − perfect_window) / (100 − perfect_window)
-    accuracy_points = max(0, linear)
-  else:
-    linear = 1.0 − (|offset| − perfect_window) / (100 − perfect_window)
-
-Accuracy % = (Σ accuracy_points / total_notes) × 100
-Range: 0–100% (never negative)
-```
-
-</details>
-
-#### Grade Thresholds
-
-| Grade | % | | Grade | % |
-|-------|---|-|-------|---|
-| XX | ≥ 99.50% | | B | ≥ 88.50% |
-| X+ | ≥ 99.00% | | B− | ≥ 87.00% |
-| X | ≥ 98.50% | | C+ | ≥ 85.50% |
-| X− | ≥ 98.00% | | C | ≥ 84.00% |
-| SS+ | ≥ 97.50% | | C− | ≥ 82.50% |
-| SS | ≥ 97.00% | | D+ | ≥ 80.00% |
-| SS− | ≥ 96.50% | | D | ≥ 77.50% |
-| S+ | ≥ 96.00% | | D− | ≥ 75.00% |
-| S | ≥ 95.00% | | F | < 75.00% |
-| S− | ≥ 94.00% | | | |
-| A+ | ≥ 93.00% | | | |
-| A | ≥ 92.00% | | | |
-| A− | ≥ 91.00% | | | |
-| B+ | ≥ 90.00% | | | |
-
-#### FC Tiers
-
-| Tier | Criteria |
-|------|----------|
-| FFC | All Flawless, no misses |
-| PFC | Flawless + Precise only, no misses |
-| GFC | Up to Great, no misses |
-| FC | No misses |
-| SDCB | < 10 misses |
-| Clear | ≥ 10 misses |
-
-#### Combo Behavior
-
-Judgements within 50ms (Flawless through Ok) **maintain combo**. Hits later than 50ms (Sloppy, Barely) **break combo**. Misses also break combo.
-
-#### Settings
-
-| Setting | Range | Default |
-|---------|-------|---------|
-| Perfect Window | 0.0–15.0ms | 10.0ms |
-
----
-
-### 7. O2Jam
-
-The scoring system from **O2Jam**, a Korean arcade/online rhythm game. Features combo-multiplied scoring where every point is scaled by your current combo count.
-
-#### Timing Windows
-
-**Fixed mode** (default):
-
-| Judgement | Window |
-|-----------|--------|
-| COOL | ±33ms |
-| GOOD | ±67ms |
-| BAD | ±100ms |
-| MISS | > 100ms |
-
-**BPM mode** (optional, authentic O2Jam behavior):
-
-| Judgement | Formula | @ 150 BPM | @ 200 BPM |
-|-----------|---------|-----------|-----------|
-| COOL | 7,500 / BPM ms | ±50ms | ±37.5ms |
-| GOOD | 22,500 / BPM ms | ±150ms | ±112.5ms |
-| BAD | 31,250 / BPM ms | ±208ms | ±156ms |
-
-#### Score Formula
-
-Score is **unlimited** — directly driven by combo:
-
-$$
-\text{score} \mathrel{+}= w_j \times \text{combo} \quad\quad w_{\text{COOL}} = 1.0,\quad w_{\text{GOOD}} = 0.7,\quad w_{\text{BAD}} = 0.4
-$$
-
-BAD and MISS reset combo to 0 before scoring (so BAD always adds 0).
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-On COOL hit:  score += 1.0 × current_combo
-On GOOD hit:  score += 0.7 × current_combo
-On BAD hit:   combo = 0, score += 0.4 × 0 = 0
-On MISS:      combo = 0, score += 0
-```
-
-</details>
-
-> Higher combo = exponentially more points. A COOL at combo 500 gives 500 points; at combo 1 it gives 1 point.
-
-#### Accuracy Formula
-
-$$
-\text{Accuracy \%} = \frac{1.0 \times N_{\text{COOL}} + 0.7 \times N_{\text{GOOD}} + 0.4 \times N_{\text{BAD}}}{N_{\text{total}}} \times 100
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-                1.0 × CountCOOL + 0.7 × CountGOOD + 0.4 × CountBAD
-Accuracy % =  ──────────────────────────────────────────────────────── × 100
-                                   TotalNotes
-```
-
-</details>
-
-#### Grade Thresholds
-
-| Grade | Threshold |
-|-------|-----------|
-| SSS | 100% |
-| SS | ≥ 99% |
-| S | ≥ 95% |
-| A | ≥ 90% |
-| B | ≥ 80% |
-| C | ≥ 70% |
-| D | ≥ 60% |
-| F | < 60% |
-
-#### FC Tiers
-
-| Tier | Criteria |
-|------|----------|
-| AFC | All COOL, no misses |
-| FC | COOL + GOOD only, no BAD/MISS |
-| SDCB | < 10 combo breaks |
-| Clear | ≥ 10 combo breaks |
-
-#### Combo Behavior
-
-| Maintains Combo | Breaks Combo |
-|----------------|--------------|
-| COOL, GOOD | BAD, MISS |
-
-#### Settings
-
-| Setting | Options | Default |
-|---------|---------|---------|
-| BPM-Based Windows | on/off | off |
-
----
-
-### 8. DJMAX RESPECT V
-
-The scoring system from **DJMAX RESPECT V** (PC version), using fixed timing windows and accuracy-weighted scoring normalized to 1,000,000.
-
-#### Timing Windows
-
-| Judgement | Window |
-|-----------|--------|
-| MAX 100% | ±16ms |
-| MAX 90% | ±33ms |
-| GOOD | ±66ms |
-| BAD | ±100ms |
-| BREAK | > 100ms |
-
-#### Score Formula
-
-$$
-\text{Score} = 1{,}000{,}000 \times \frac{\displaystyle\sum_{i=1}^{N} w_i}{N}
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-Score = 1,000,000 × (WeightedSum / TotalNotes)
-```
-
-</details>
-
-| Judgement | Weight |
-|-----------|--------|
-| MAX 100% | 1.0 |
-| MAX 90% | 0.9 |
-| GOOD | 0.5 |
-| BAD | 0.1 |
-| BREAK | 0.0 |
-
-#### Accuracy Formula
-
-$$
-\text{Accuracy \%} = \frac{\displaystyle\sum_{i=1}^{N} w_i}{N} \times 100
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-Accuracy % = (WeightedSum / TotalNotes) × 100
-```
-
-</details>
-
-#### Grade Thresholds
-
-| Grade | Threshold |
-|-------|-----------|
-| S | ≥ 97% |
-| A | ≥ 90% |
-| B | ≥ 80% |
-| C | < 80% |
-
-#### FC Tiers
-
-| Tier | Criteria |
-|------|----------|
-| PP | All MAX 100%, no misses |
-| FC | MAX 100% + MAX 90% only, no GOOD/BAD/BREAK |
-| SDCB | < 10 combo breaks |
-| Clear | ≥ 10 combo breaks |
-
-#### Combo Behavior
-
-| Maintains Combo | Breaks Combo |
-|----------------|--------------|
-| MAX 100%, MAX 90% | GOOD, BAD, BREAK |
-
-> Unlike most systems, GOOD breaks combo in DJMAX.
-
----
-
-### 9. beatmania IIDX
-
-The **EX Score** system from **beatmania IIDX**, using frame-based timing windows normalized for PC (60fps). Grade boundaries are based on ninths (fractions of 9).
-
-#### Timing Windows
-
-| Judgement | Window | Frame Equivalent (60fps) |
-|-----------|--------|-------------------------|
-| PGREAT | ±16.67ms | 1 frame |
-| GREAT | ±33.33ms | 2 frames |
-| GOOD | ±66.67ms | 4 frames |
-| BAD | ±100ms | — |
-| AWFUL | ±180ms | — |
-| POOR | > 180ms (miss) | — |
-
-#### Score Formula
-
-$$
-\text{EX Score} = 2 \times N_{\text{PGREAT}} + 1 \times N_{\text{GREAT}} \quad\quad \text{Max EX} = 2N
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-EX Score = 2 × CountPGREAT + 1 × CountGREAT
-
-Max EX = 2 × TotalNotes (all PGREATs)
-```
-
-</details>
-
-| Judgement | EX Points |
-|-----------|-----------|
-| PGREAT | +2 |
-| GREAT | +1 |
-| GOOD | 0 |
-| BAD | 0 |
-| POOR | 0 |
-
-#### Accuracy Formula (EX Rate)
-
-$$
-\text{EX Rate \%} = \frac{\text{EX Score}}{2 \times N} \times 100
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-                  EX Score
-EX Rate % =  ──────────────── × 100
-              2 × TotalNotes
-```
-
-</details>
-
-> Grade thresholds use the authentic EX Rate above. For the displayed accuracy percentage, a **custom weighted judgement accuracy** is used instead — beatmania IIDX does not have a native accuracy percentage, so this was built to produce values comparable to Psych Engine's built-in accuracy system.
-
-#### Weighted Accuracy Formula (displayed %, non-authentic)
-
-$$
-\text{Accuracy \%} = \frac{1.0 \cdot N_{\text{PGREAT}} + 0.75 \cdot N_{\text{GREAT}} + 0.5 \cdot N_{\text{GOOD}} + 0.25 \cdot N_{\text{BAD}}}{N} \times 100
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-Weighted Sum = 1.0 × PGREAT + 0.75 × GREAT + 0.5 × GOOD + 0.25 × BAD + 0 × AWFUL + 0 × POOR
-
-Accuracy % = Weighted Sum / TotalNotes × 100
-```
-
-</details>
-
-| Judgement | Accuracy Weight |
-|-----------|----------------|
-| PGREAT | 1.0 |
-| GREAT | 0.75 |
-| GOOD | 0.5 |
-| BAD | 0.25 |
-| AWFUL | 0.0 |
-| POOR | 0.0 |
-
-#### Grade Thresholds
-
-Grades are based on **ninths** of the maximum EX Score:
-
-| Grade | Fraction | EX Rate |
-|-------|----------|---------|
-| AAA | ≥ 8/9 | ≥ 88.89% |
-| AA | ≥ 7/9 | ≥ 77.78% |
-| A | ≥ 6/9 | ≥ 66.67% |
-| B | ≥ 5/9 | ≥ 55.56% |
-| C | ≥ 4/9 | ≥ 44.44% |
-| D | ≥ 3/9 | ≥ 33.33% |
-| E | ≥ 2/9 | ≥ 22.22% |
-| F | < 2/9 | < 22.22% |
-
-#### FC Tiers
-
-| Tier | Criteria |
-|------|----------|
-| PFC | All PGREAT, no misses |
-| FC | No BAD, AWFUL or POOR |
-| SDCB | < 10 combo breaks |
-| Clear | ≥ 10 combo breaks |
-
-#### Combo Behavior
-
-| Maintains Combo | Breaks Combo |
-|----------------|--------------|
-| PGREAT, GREAT, GOOD | BAD, AWFUL, POOR |
-
----
-
-### 10. Quaver
-
-The scoring system from **Quaver**, an open-source vertical scrolling rhythm game. Uses weighted accuracy normalized to 1,000,000. Features 6 judgement tiers and 8 difficulty presets (Peaceful → Impossible).
-
-#### Timing Windows
-
-Windows vary by **difficulty preset** (Standard shown, default):
-
-| Judgement | Window |
-|-----------|--------|
-| Marvelous | ±18ms |
-| Perfect | ±43ms |
-| Great | ±76ms |
-| Good | ±106ms |
-| Okay | ±127ms |
-| Miss | > 164ms |
-
-<details>
-<summary>📋 All difficulty presets</summary>
-
-| Preset | Marvelous | Perfect | Great | Good | Okay | Miss |
-|--------|-----------|---------|-------|------|------|------|
-| Peaceful | ±23ms | ±57ms | ±101ms | ±141ms | ±169ms | > 218ms |
-| Lenient | ±21ms | ±52ms | ±91ms | ±128ms | ±153ms | > 198ms |
-| Chill | ±19ms | ±47ms | ±83ms | ±116ms | ±139ms | > 180ms |
-| **Standard** | **±18ms** | **±43ms** | **±76ms** | **±106ms** | **±127ms** | **> 164ms** |
-| Strict | ±16ms | ±39ms | ±69ms | ±96ms | ±127ms | > 164ms |
-| Tough | ±14ms | ±35ms | ±62ms | ±87ms | ±127ms | > 164ms |
-| Extreme | ±13ms | ±32ms | ±57ms | ±79ms | ±127ms | > 164ms |
-| Impossible | ±8ms | ±20ms | ±35ms | ±49ms | ±127ms | > 164ms |
-
-</details>
-
-#### Score Formula
-
-$$
-\text{Score} = 1{,}000{,}000 \times A
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-Score = 1,000,000 × Accuracy
-```
-
-</details>
-
-#### Accuracy Formula
-
-$$
-\text{Accuracy \%} = \frac{\displaystyle\sum_{j} V_j \times N_j}{100 \times N} \times 100
-$$
-
-<details>
-<summary>📋 Copy-pasteable formula</summary>
-
-```
-         Σ (V_j × N_j)
-Acc =  ───────────────── × 100
-          100 × N
-```
-
-</details>
-
-| Judgement | Weight (V_j) |
-|-----------|-------------|
-| Marvelous | 100 |
-| Perfect | 98.25 |
-| Great | 65 |
-| Good | 25 |
-| Okay | −100 |
-| Miss | −50 |
-
-> Okay and Miss have **negative weights**, so they actively reduce accuracy. This means accuracy can drop below 0%.
-
-#### Grade Thresholds
-
-| Grade | Threshold |
-|-------|-----------|
-| X | 100% |
-| SS | ≥ 99% |
-| S | ≥ 95% |
-| A | ≥ 90% |
-| B | ≥ 80% |
-| C | ≥ 70% |
-| D | < 70% |
-
-#### FC Tiers
-
-| Tier | Criteria |
-|------|----------|
-| PFC | All Marvelous, no combo breaks |
-| FC | No Okay or Miss |
-| SDCB | < 10 combo breaks |
-| Clear | ≥ 10 combo breaks |
-
-#### Combo Behavior
-
-| Maintains Combo | Breaks Combo |
-|----------------|--------------|
-| Marvelous, Perfect, Great, Good | Okay, Miss |
-
-#### Settings
-
-| Setting | Options | Default |
-|---------|---------|---------|
-| Judgement Difficulty | Peaceful / Lenient / Chill / Standard / Strict / Tough / Extreme / Impossible | Standard |
+Detailed documentation for each scoring system is available in the [`docs/`](docs/) folder:
+[Wife3](docs/Wife3.md) · [osu!mania V1](docs/OsuMania.md) · [osu!mania V2](docs/OsuManiaV2.md) · [ITG](docs/ITG.md) · [Ruthless](docs/Ruthless.md) · [O2Jam](docs/O2Jam.md) · [DJMAX](docs/DJMAX.md) · [IIDX](docs/IIDX.md) · [Quaver](docs/Quaver.md)
 
 ---
 
@@ -1056,100 +393,6 @@ What accuracy do you need for the "best" achievable grade (below perfect)?
 | DJMAX | S | 97.00% | A | ≥ 90% |
 | IIDX | AAA | 88.89% | AA | 77.78% |
 | Quaver | X | 100% | SS | ≥ 99% |
-
----
-
-## Supporting Features
-
-These scripts work alongside all scoring systems:
-
-### Timing Display
-Color-coded timing feedback (e.g. "+12.5ms") that appears on-screen after each note hit. Colors match the active scoring system's judgement tiers.
-
-### Score Comparison
-Shows **all 10 scoring systems side by side** during gameplay — score, accuracy, grade, and FC tier for each. Useful for comparing how different systems evaluate the same performance.
-
-### Rating Popups
-Replaces Psych Engine's default rating images (sick/good/bad/shit) with custom sprites matching the active scoring system's judgement names. Supports both **individual images** (`images/ratings/[system]/[judgement].png`) and **spritesheets** (`images/ratings/[system]/spritesheet.png` + `.xml`). Individual images override spritesheet entries when both exist.
-
-Optional per-system **theme.json** (`images/ratings/[system]/theme.json`) can configure scale, antialiasing, framerate, tween duration, velocity, and per-judgement offsets. All of these are also configurable via Mod Settings.
-
-For osu!mania and OsuManiaV2, hold note **heads** do not show rating popups — only the last **tail** release shows a popup. This matches the official behavior where the hold result is shown at the end.
-
-### Judgement Counter
-Displays a real-time breakdown of judgement counts during gameplay. Automatically uses labels and colors from the active scoring system. For osu!mania and OsuManiaV2, the counter reads tallies directly from the scoring system (including tail judgements) rather than classifying hits independently.
-
----
-
-## Installation
-
-1. Download the script pack folder
-2. Place it in your `mods/` directory:
-   ```
-   mods/[Script Pack] Lulu's Scoring Systems/
-   ├── pack.json
-   ├── data/
-   │   └── settings.json
-   ├── scripts/
-   │   ├── Loader.hx                    (auto-loads only needed scripts)
-   │   ├── scoring/
-   │   │   ├── Wife3 Scoring System.hx
-   │   │   ├── OsuMania Scoring System.hx
-   │   │   ├── OsuManiaV2 Scoring System.hx
-   │   │   ├── ITG Scoring System.hx
-   │   │   ├── Ruthless Scoring System.hx
-   │   │   ├── O2Jam Scoring System.hx
-   │   │   ├── DJMAX Scoring System.hx
-   │   │   ├── IIDX Scoring System.hx
-   │   │   └── Quaver Scoring System.hx
-   │   └── extras/
-   │       ├── Timing Display.hx
-   │       ├── Score Comparison.hx
-   │       ├── Rating Popups.hx
-   │       └── Judgement Counter.lua
-   └── images/
-       └── ratings/          (optional custom rating popup images)
-   ```
-3. Enable the script pack in the Psych Engine mod menu
-4. Configure your preferred scoring system in **Mod Settings**
-
----
-
-## Configuration
-
-All settings are configurable through Psych Engine's **Mod Settings** menu. No code editing required.
-
-### General Settings (All Systems)
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| Scoring System | Select active system | Psych |
-| Enable Scoring Debug Output | Print debug info | Off |
-| Replace Score Text | Override default HUD text | On |
-| Show Timing Display | Show ms timing feedback | On |
-| Show Judgement Counter | Show real-time judgement tally | On |
-| Show Score Comparison | Show all systems side by side | Off |
-| Use Kade Engine Style | Alternative score text format | Off |
-| Custom Rating Popups | Use system-specific rating images | Off |
-| Use Theme Defaults | Read scale/antialiasing from theme.json | Off |
-| Rating Popup Scale | Scale multiplier for popup sprites | 1.0 |
-| Rating Popup Antialiasing | Antialiasing mode (ClientPrefs / On / Off) | ClientPrefs |
-| Rating Popup Framerate | Animation framerate for spritesheets | 60 |
-| Rating Popup Fade Duration | Fade-out tween duration (seconds) | 0.1 |
-| Rating Popup Velocity X | Horizontal velocity of popup sprites | 0.0 |
-| Rating Popup Velocity Y | Vertical velocity of popup sprites | −70.0 |
-
-### Per-System Settings
-
-| System | Setting | Description |
-|--------|---------|-------------|
-| Wife3 | Judge Preset (1–9) | Timing strictness preset |
-| Wife3 | Judge Scale (0.009–4.0) | Custom timing scale (overrides preset) |
-| osu!mania V1/V2 | Overall Difficulty (0–10) | Timing window strictness |
-| ITG | Window Scale (0.1–4.0) | Timing window multiplier |
-| Ruthless | Perfect Window (0–15ms) | Flawless timing threshold |
-| O2Jam | BPM-Based Windows | Authentic BPM-scaling toggle |
-| Quaver | Judgement Difficulty | Preset: Peaceful → Impossible |
 
 ---
 
