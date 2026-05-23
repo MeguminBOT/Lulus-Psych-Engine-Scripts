@@ -1,0 +1,3 @@
+Blammed Lights
+Value 1= Any number from 1 to 5
+Setting value 1 to "6" will give you random color
