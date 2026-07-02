@@ -18,19 +18,18 @@ function onCreate()
         import sys.FileSystem;
 
         var dummyPath:String = Paths.video('_VideoDummy');
-            if (!FileSystem.exists(dummyPath)) {
-                trace('VideoWarmUp: dummy video missing (' + dummyPath + '), skipping warm-up');
-                return;
-            }
-            var dummyVideo:VideoSprite = new VideoSprite(dummyPath, true, false, false);
-            if (dummyVideo.videoSprite != null) {
-                dummyVideo.videoSprite.visible = false;
-                if (dummyVideo.videoSprite.bitmap != null)
-                    dummyVideo.videoSprite.bitmap.visible = false;
-            }
-            game.add(dummyVideo);
-            dummyVideo.play();
-            trace('VideoWarmUp: primed VLC decoder pipeline (self-destroys on end)');
+        if (!FileSystem.exists(dummyPath)) {
+            trace('VideoWarmUp: dummy video missing (' + dummyPath + '), skipping warm-up');
+            return;
         }
+        var dummyVideo:VideoSprite = new VideoSprite(dummyPath, true, false, false);
+        if (dummyVideo.videoSprite != null) {
+            dummyVideo.videoSprite.visible = false;
+            if (dummyVideo.videoSprite.bitmap != null)
+                dummyVideo.videoSprite.bitmap.visible = false;
+        }
+        game.add(dummyVideo);
+        dummyVideo.play();
+        trace('VideoWarmUp: primed VLC decoder pipeline (self-destroys on end)');
     ]])
 end
